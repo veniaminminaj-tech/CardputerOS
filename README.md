@@ -1,6 +1,6 @@
-# CardputerOS
+# KolibriX
 
-Прототип мінімальної операційної системи в стилі Linux для **M5Stack Cardputer ADV** (ESP32-S3) із зовнішнім дисплеєм ILI9341 320×240 на роз'ємі EXT.
+Прототип KolibriX — мінімальної операційної системи для ESP32-S3 у стилі Linux для **M5Stack Cardputer ADV** (ESP32-S3) із зовнішнім дисплеєм ILI9341 320×240 на роз'ємі EXT.
 
 > **Статус:** прототип. Код писався без компіляції на реальному пристрої. Якщо збірка видасть помилки, див. розділ «Обмеження».
 
@@ -31,6 +31,10 @@
 
 Бібліотеки з `platformio.ini`: `M5Cardputer` і `LovyanGFX`. Хеш SHA-256 бере mbedTLS, яка входить у ESP32 Arduino core, окремо встановлювати її не треба.
 
+## Системний диск `/` на microSD
+
+У цій версії microSD є основним диском системи: абсолютний шлях `/etc/passwd`, `/root`, `/home` та `/apps` відповідає каталогам у корені карти. Внутрішня flash ESP32 використовується для прошивки й OTA, а не як домашня файлова система. Не виймайте карту під час роботи. Наразі драйвер Arduino `SD` очікує сумісну FAT32-карту; exFAT ще не підтримується.
+
 ## Підготовка SD-карти
 
 Скопіюйте вміст папки `sd/apps/` на корінь карти. Решту структури створить система:
@@ -49,13 +53,13 @@
 **Збірка:**
 
 1. Launcher один раз по USB: `pio run -e launcher -t upload`.
-2. CardputerOS: `pio run -e cardputer_os`. Файл: `.pio/build/cardputer_os/firmware.bin`.
+2. KolibriX: `pio run -e cardputer_os`. Файл: `.pio/build/cardputer_os/firmware.bin`.
 3. Gaming збирайте у своєму проєкті з таким самим `partitions_cardputer.csv` і підключеним `include/boot_guard.h`. У його `setup()` першим рядком має бути `bootReturnToLauncher();`. Розмір застосунку має бути не більше 2.6 МБ.
 
 **SD-карта:**
 
 ```
-/boot/cardputer_os.bin     CardputerOS
+/boot/cardputer_os.bin     KolibriX
 /boot/gaming.bin           гра або емулятор
 ```
 
