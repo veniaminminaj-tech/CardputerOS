@@ -1,0 +1,52 @@
+name: Expand CardputerOS source and build
+
+on:
+  push:
+    branches: [browser-css-js]
+
+permissions:
+  contents: write
+
+jobs:
+  expand-and-build:
+    if: ${{ !hashFiles('platformio.ini') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: browser-css-js
+          fetch-depth: 0
+      - name: Expand uploaded source archive
+        run: |
+          test -f cardputeros_buildkit.zip
+          mkdir -p /tmp/cardputer-source
+          unzip -q cardputeros_buildkit.zip -d /tmp/cardputer-source
+          test -f /tmp/cardputer-source/cardputer-os/platformio.ini
+          cp -a /tmp/cardputer-source/cardputer-os/. .
+          if grep -q 'branches: \[ main, master \]' .github/workflows/build.yml; then
+            sed -i 's/branches: \[ main, master \]/branches: [ main, master, browser-css-js ]/' .github/workflows/build.yml
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Expand CardputerOS source tree"
+          git push origin HEAD:browser-css-js
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install PlatformIO
+        run: pip install platformio
+      - name: Build firmware
+        run: |
+          pio run -e launcher
+          pio run -e cardputer_os
+      - name: Collect firmware
+        run: |
+          mkdir -p release
+          cp .pio/build/launcher/firmware.bin release/launcher.bin
+          cp .pio/build/cardputer_os/firmware.bin release/cardputer_os.bin
+          cp partitions_cardputer.csv release/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cardputeros-firmware
+          path: release/*
