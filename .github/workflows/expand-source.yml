@@ -15,6 +15,18 @@ jobs:
         with:
           ref: browser-css-js
           fetch-depth: 0
+      - name: Apply mini CSS and JavaScript browser update
+        run: |
+          if [ -f browser-css-js.patch ]; then
+            git apply --check browser-css-js.patch
+            git apply browser-css-js.patch
+            rm browser-css-js.patch
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src/browser.cpp browser-css-js.patch
+            git commit -m "Add mini CSS and JavaScript support to browser"
+            git push origin HEAD:browser-css-js
+          fi
       - name: Expand uploaded source archive
         if: ${{ !hashFiles('platformio.ini') }}
         run: |
