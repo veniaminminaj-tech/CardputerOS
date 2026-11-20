@@ -53,13 +53,13 @@
 **Збірка:**
 
 1. Launcher один раз по USB: `pio run -e launcher -t upload`.
-2. KolibriX: `pio run -e cardputer_os`. Файл: `.pio/build/cardputer_os/firmware.bin`.
+2. KolibriX: `pio run -e kolibrix`. Файл: `.pio/build/kolibrix/firmware.bin`.
 3. Gaming збирайте у своєму проєкті з таким самим `partitions_cardputer.csv` і підключеним `include/boot_guard.h`. У його `setup()` першим рядком має бути `bootReturnToLauncher();`. Розмір застосунку має бути не більше 2.6 МБ.
 
 **SD-карта:**
 
 ```
-/boot/cardputer_os.bin     KolibriX
+/boot/kolibrix.bin     KolibriX
 /boot/gaming.bin           гра або емулятор
 ```
 
