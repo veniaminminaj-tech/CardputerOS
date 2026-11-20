@@ -9,7 +9,6 @@ permissions:
 
 jobs:
   expand-and-build:
-    if: ${{ !hashFiles('platformio.ini') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,6 +16,7 @@ jobs:
           ref: browser-css-js
           fetch-depth: 0
       - name: Expand uploaded source archive
+        if: ${{ !hashFiles('platformio.ini') }}
         run: |
           test -f cardputeros_buildkit.zip
           mkdir -p /tmp/cardputer-source
