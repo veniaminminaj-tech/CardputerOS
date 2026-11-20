@@ -18,8 +18,8 @@ jobs:
       - name: Apply mini CSS and JavaScript browser update
         run: |
           if [ -f browser-css-js.patch ]; then
-            git apply --check browser-css-js.patch
-            git apply browser-css-js.patch
+            git apply --check --recount browser-css-js.patch
+            git apply --recount browser-css-js.patch
             rm browser-css-js.patch
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -43,6 +43,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
+      - name: Install PlatformIO
+        with:
+          python-version: '3.x'
+        uses: actions/setup-python@v5
       - name: Install PlatformIO
         run: pip install platformio
       - name: Build firmware
