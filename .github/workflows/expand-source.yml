@@ -44,10 +44,6 @@ jobs:
         with:
           python-version: '3.x'
       - name: Install PlatformIO
-        with:
-          python-version: '3.x'
-        uses: actions/setup-python@v5
-      - name: Install PlatformIO
         run: pip install platformio
       - name: Build firmware
         run: |
