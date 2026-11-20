@@ -22,10 +22,7 @@ jobs:
           mkdir -p /tmp/cardputer-source
           unzip -q cardputeros_buildkit.zip -d /tmp/cardputer-source
           test -f /tmp/cardputer-source/cardputer-os/platformio.ini
-          cp -a /tmp/cardputer-source/cardputer-os/. .
-          if grep -q 'branches: \[ main, master \]' .github/workflows/build.yml; then
-            sed -i 's/branches: \[ main, master \]/branches: [ main, master, browser-css-js ]/' .github/workflows/build.yml
-          fi
+          find /tmp/cardputer-source/cardputer-os -mindepth 1 -maxdepth 1 ! -name .github -exec cp -a {} . \;
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
