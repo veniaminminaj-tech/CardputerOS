@@ -13,7 +13,7 @@ namespace {
 
 const int kCount = 3;
 const char* kLabel[kCount] = {"Cardputer OS", "Gaming", "Update both from SD"};
-const char* kFile[2] = {"/boot/cardputer_os.bin", "/boot/gaming.bin"};
+const char* kFile[2] = {"/boot/kolibrix.bin", "/boot/gaming.bin"};
 const char* kReady[2] = {"ready0", "ready1"};
 const esp_partition_subtype_t kSlot[2] = {ESP_PARTITION_SUBTYPE_APP_OTA_0,
                                           ESP_PARTITION_SUBTYPE_APP_OTA_1};
@@ -39,7 +39,7 @@ void drawProgress(int pct) {
 
 void drawMenu() {
   tft.fillScreen(COL_BLACK);
-  drawLine(10, 8, "CardputerOS launcher", COL_GREEN, COL_BLACK);
+  drawLine(10, 8, "KolibriX launcher", COL_GREEN, COL_BLACK);
   for (int i = 0; i < kCount; i++) {
     int y = 40 + i * 22;
     bool on = (i == sel);
