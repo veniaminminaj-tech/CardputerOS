@@ -20,6 +20,8 @@ struct Word {
   int link = -1;        // индекс ссылки или -1
   bool brk = false;     // начать с новой строки
   bool glue = false;    // без пробела перед словом
+  bool bold = false;
+  bool underline = false;
   int col = 0;          // позиция в строке (символы), задаётся в layout
 };
 
@@ -337,7 +339,8 @@ uint16_t htmlColor(String value, uint16_t fallback) {
   return fallback;
 }
 
-void applyInlineStyle(const String& style, uint16_t& fg, uint16_t& bg) {
+void applyInlineStyle(const String& style, uint16_t& fg, uint16_t& bg,
+                      bool& bold, bool& underline, bool& uppercase) {
   int pos = 0;
   while (pos < (int)style.length()) {
     int end = style.indexOf(';', pos);
@@ -350,6 +353,9 @@ void applyInlineStyle(const String& style, uint16_t& fg, uint16_t& bg) {
       key.trim(); value.trim(); key.toLowerCase();
       if (key == "color") fg = htmlColor(value, fg);
       else if (key == "background" || key == "background-color") bg = htmlColor(value, bg);
+      else if (key == "font-weight") bold = (value == "bold" || value == "700" || value == "800" || value == "900");
+      else if (key == "text-decoration") underline = (value.indexOf("underline") >= 0);
+      else if (key == "text-transform") uppercase = (value == "uppercase");
     }
     pos = end + 1;
   }
@@ -357,7 +363,7 @@ void applyInlineStyle(const String& style, uint16_t& fg, uint16_t& bg) {
 
 
 // Tiny CSS subset: tag, .class and #id selectors; color/background only.
-struct CssRule { String selector; uint16_t fg = COL_WHITE; uint16_t bg = COL_BLACK; bool hasFg = false; bool hasBg = false; };
+struct CssRule { String selector; uint16_t fg = COL_WHITE; uint16_t bg = COL_BLACK; bool hasFg = false; bool hasBg = false; bool bold = false; bool hasBold = false; bool underline = false; bool hasUnderline = false; bool uppercase = false; bool hasUppercase = false; };
 using CssRules = std::vector<CssRule>;
 
 void parseCssRules(const String& css, CssRules& rules) {
@@ -384,6 +390,9 @@ void parseCssRules(const String& css, CssRules& rules) {
             String key=item.substring(0,c), val=item.substring(c+1); key.trim(); val.trim(); key.toLowerCase();
             if (key == "color") { r.fg=htmlColor(val,COL_WHITE); r.hasFg=true; }
             else if (key == "background" || key == "background-color") { r.bg=htmlColor(val,COL_BLACK); r.hasBg=true; }
+            else if (key == "font-weight") { r.bold=(val=="bold" || val=="700" || val=="800" || val=="900"); r.hasBold=true; }
+            else if (key == "text-decoration") { r.underline=(val.indexOf("underline")>=0); r.hasUnderline=true; }
+            else if (key == "text-transform") { r.uppercase=(val=="uppercase"); r.hasUppercase=true; }
           }
           dp=de+1;
         }
@@ -408,10 +417,13 @@ bool cssMatches(const String& selector, const String& tag, const String& attrs) 
 }
 
 void applyCssRules(const CssRules& rules, const String& tag, const String& attrs,
-                   uint16_t& fg, uint16_t& bg) {
+                   uint16_t& fg, uint16_t& bg, bool& bold, bool& underline, bool& uppercase) {
   for (const CssRule& r : rules) if (cssMatches(r.selector, tag, attrs)) {
     if (r.hasFg) fg = r.fg;
     if (r.hasBg) bg = r.bg;
+    if (r.hasBold) bold = r.bold;
+    if (r.hasUnderline) underline = r.underline;
+    if (r.hasUppercase) uppercase = r.uppercase;
   }
 }
 
@@ -457,8 +469,9 @@ String runTinyJavaScript(const String& html) {
         if(e>0) { String name=rest.substring(0,e); name.trim(); String val=jsValue(rest.substring(e+1),vars);
           bool replaced=false; for(auto& v:vars) if(v.first==name){v.second=val;replaced=true;}
           if(!replaced && vars.size()<12) vars.push_back({name,val}); }
-      } else if(st.startsWith("document.write(")) {
-        int a=st.indexOf('('), b=st.lastIndexOf(')'); if(b>a) output+=jsValue(st.substring(a+1,b),vars);
+      } else if(st.startsWith("document.write(") || st.startsWith("document.writeln(")) {
+        int a=st.indexOf('('), b=st.lastIndexOf(')');
+        if(b>a) { output+=jsValue(st.substring(a+1,b),vars); if(st.startsWith("document.writeln(")) output+="<br>"; }
       } else if(st.startsWith("document.title") && eq>0) {
         // Title is handled by the HTML title tag; append a title node for this subset.
         output += "<title>" + jsValue(st.substring(eq+1),vars) + "</title>";
@@ -512,9 +525,14 @@ private:
     if (closing) {
       _styleColor = COL_WHITE;
       _styleBg = COL_BLACK;
+      _styleBold = false;
+      _styleUnderline = false;
+      _styleUppercase = false;
     } else {
-      applyCssRules(_css, name, attrs, _styleColor, _styleBg);
-      applyInlineStyle(attrValue(attrs, "style"), _styleColor, _styleBg);
+      applyCssRules(_css, name, attrs, _styleColor, _styleBg, _styleBold, _styleUnderline, _styleUppercase);
+      applyInlineStyle(attrValue(attrs, "style"), _styleColor, _styleBg, _styleBold, _styleUnderline, _styleUppercase);
+      if (name == "b" || name == "strong") _styleBold = true;
+      if (name == "u") _styleUnderline = true;
       if (name == "font") _styleColor = htmlColor(attrValue(attrs, "color"), _styleColor);
     }
 
@@ -591,7 +609,9 @@ private:
       char c = (k < s.length()) ? s.charAt(k) : ' ';
       if (isWs(c)) {
         if (cur.length()) {
-          add(cur, curColor(), glue && first);
+          String word = cur;
+          if (_styleUppercase) word.toUpperCase();
+          add(word, curColor(), glue && first);
           cur = "";
           first = false;
         }
@@ -607,6 +627,8 @@ private:
     w.text = (t.length() > 40) ? t.substring(0, 40) : t;
     w.color = (_link >= 0) ? COL_CYAN : (_styleColor != COL_WHITE ? _styleColor : color);
     w.bg = _styleBg;
+    w.bold = _styleBold;
+    w.underline = _styleUnderline;
     w.link = _link;
     w.brk = _pendBrk;
     w.glue = glue;
@@ -685,6 +707,9 @@ private:
   bool _endNonSpace = false;
   uint16_t _styleColor = COL_WHITE;
   uint16_t _styleBg = COL_BLACK;
+  bool _styleBold = false;
+  bool _styleUnderline = false;
+  bool _styleUppercase = false;
 };
 
 // ---------- Приложение ----------
@@ -759,8 +784,13 @@ public:
           const Word& w = _page.words[j];
           if (w.text.isEmpty()) continue;
           bool sel = (w.link >= 0 && w.link == _sel);
-          tft.setTextColor(sel ? COL_BLACK : w.color, sel ? COL_WHITE : w.bg);
-          drawText(b.x + 2 + w.col * g_charW, y, w.text);
+          uint16_t fg = sel ? COL_BLACK : w.color;
+          uint16_t bg = sel ? COL_WHITE : w.bg;
+          int x = b.x + 2 + w.col * g_charW;
+          tft.setTextColor(fg, bg);
+          drawText(x, y, w.text);
+          if (w.bold) drawText(x + 1, y, w.text);
+          if (w.underline) tft.drawFastHLine(x, y + g_lineH - 1, (int)w.text.length() * g_charW, fg);
         }
       }
     } else {
