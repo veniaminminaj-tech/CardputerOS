@@ -12,7 +12,7 @@ CardDisplay tft;
 namespace {
 
 const int kCount = 3;
-const char* kLabel[kCount] = {"Cardputer OS", "Gaming", "Update both from SD"};
+const char* kLabel[kCount] = {"KolibriX", "Gaming", "Update both from SD"};
 const char* kFile[2] = {"/boot/kolibrix.bin", "/boot/gaming.bin"};
 const char* kReady[2] = {"ready0", "ready1"};
 const esp_partition_subtype_t kSlot[2] = {ESP_PARTITION_SUBTYPE_APP_OTA_0,
