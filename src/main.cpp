@@ -29,7 +29,7 @@ String clockText() {
 int batteryPct() { return M5.Power.getBatteryLevel(); }
 bool wifiUp() { return WiFi.status() == WL_CONNECTED; }
 
-// ---------- Иконки рабочего стола ----------
+// ---------- KolibriX desktop ----------
 struct Launcher {
   String name;
   String path;     // путь к .lua (для kind == 3)
@@ -40,11 +40,12 @@ struct Launcher {
 static std::vector<Launcher> g_apps;
 static int g_sel = 0;        // выбранная иконка
 static int g_rowTop = 0;     // первая видимая строка сетки
-// Сетка ярлыков: 6 колонок × 4 строки
-static const int ICON_COLS = 6, ICON_ROWS = 4;
-static const int ICON_W = SCR_W / ICON_COLS;                // 53 px на ячейку
-static const int ICON_H = (SCR_H - STATUS_H) / ICON_ROWS;   // 56 px на ячейку
-static const int ICON_SZ = 24;                              // сторона значка
+// Компактная сетка 4x2 для экрана 320x240.
+static const int TASKBAR_H = 22;
+static const int ICON_COLS = 4;
+static const int ICON_W = SCR_W / ICON_COLS;
+static const int ICON_H = (SCR_H - STATUS_H - TASKBAR_H) / 2;
+static const int ICON_SZ = 28;
 
 static void scanApps() {
   g_apps.clear();
@@ -86,8 +87,13 @@ static void launch(int i) {
 
 // ---------- Рисование ----------
 static void drawDesktop() {
-  tft.fillRect(0, STATUS_H, SCR_W, SCR_H - STATUS_H, COL_DESK);
-  const int rowsVisible = (SCR_H - STATUS_H) / ICON_H;
+  // Темно-бирюзовый рабочий стол.
+  tft.fillRect(0, STATUS_H, SCR_W, SCR_H - STATUS_H - TASKBAR_H, COL_DESK);
+  for (int y = STATUS_H; y < SCR_H - TASKBAR_H; y += 4) {
+    uint16_t shade = (y < 112) ? 0x10A3 : 0x0861;
+    tft.drawFastHLine(0, y, SCR_W, shade);
+  }
+  const int rowsVisible = (SCR_H - STATUS_H - TASKBAR_H) / ICON_H;
   int selRow = g_sel / ICON_COLS;
   if (selRow < g_rowTop) g_rowTop = selRow;
   if (selRow >= g_rowTop + rowsVisible) g_rowTop = selRow - rowsVisible + 1;
@@ -97,9 +103,9 @@ static void drawDesktop() {
     if (r < 0 || r >= rowsVisible) continue;
     const Launcher& L = g_apps[i];
     int cx = (i % ICON_COLS) * ICON_W;
-    int cy = STATUS_H + 2 + r * ICON_H;
+    int cy = STATUS_H + 7 + r * ICON_H;
     int ix = cx + (ICON_W - ICON_SZ) / 2;
-    int iy = cy + 2;
+    int iy = cy + 3;
 
     tft.fillRoundRect(ix, iy, ICON_SZ, ICON_SZ, 5, L.color);
     if (i == g_sel) tft.drawRoundRect(ix - 2, iy - 2, ICON_SZ + 4, ICON_SZ + 4, 6, COL_WHITE);
@@ -113,8 +119,23 @@ static void drawDesktop() {
     int maxc = ICON_W / g_charW;
     String label = ((int)L.name.length() > maxc) ? L.name.substring(0, maxc - 1) + "." : L.name;
     tft.setTextColor(COL_WHITE, COL_DESK);
-    drawText(cx + (ICON_W - (int)label.length() * g_charW) / 2, iy + ICON_SZ + 4, label);
+    drawText(cx + (ICON_W - (int)label.length() * g_charW) / 2, iy + ICON_SZ + 7, label);
   }
+}
+
+static void drawTaskbar() {
+  const int y = SCR_H - TASKBAR_H;
+  tft.fillRect(0, y, SCR_W, TASKBAR_H, 0x4208);
+  tft.drawFastHLine(0, y, SCR_W, COL_WHITE);
+  tft.fillRoundRect(4, y + 3, 66, 16, 3, 0xC618);
+  tft.drawRoundRect(4, y + 3, 66, 16, 3, COL_WHITE);
+  tft.setTextColor(COL_BLACK, 0xC618);
+  drawText(10, y + 7, "K  Start");
+  tft.fillRoundRect(76, y + 3, 84, 16, 3, 0x2104);
+  tft.setTextColor(COL_WHITE, 0x2104);
+  drawText(82, y + 7, "KolibriX");
+  tft.setTextColor(COL_WHITE, 0x4208);
+  drawText(170, y + 7, g_sdOk ? "SD: ready" : "SD: missing");
 }
 
 static void drawStatus() {
@@ -129,7 +150,7 @@ static void drawStatus() {
 }
 
 static void redrawAll() {
-  if (wmShowDesktop()) drawDesktop();
+  if (wmShowDesktop()) { drawDesktop(); drawTaskbar(); }
   else wmDrawAll();
   drawStatus();
 }
