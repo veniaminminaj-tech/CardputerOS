@@ -1,4 +1,4 @@
-// CardputerOS: точка входа, рабочий стол, горячие клавиши, строка состояния
+// KolibriX: точка входа, рабочий стол, горячие клавиши, строка состояния
 #include <Arduino.h>
 #include <M5Cardputer.h>
 #include <SD.h>
@@ -120,7 +120,7 @@ static void drawDesktop() {
 static void drawStatus() {
   tft.fillRect(0, 0, SCR_W, STATUS_H, COL_DGRAY);
   tft.setTextColor(COL_WHITE, COL_DGRAY);
-  drawText(4, 3, "CardputerOS  " + (sessionLoggedIn() ? sessionUser() : String("locked")));
+  drawText(4, 3, "KolibriX  " + (sessionLoggedIn() ? sessionUser() : String("locked")));
   String right = wifiUp() ? "WiFi  " : "----  ";
   int bat = batteryPct();
   if (bat >= 0) right += "BAT " + String(bat) + "%  ";
