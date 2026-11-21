@@ -240,7 +240,7 @@ class KolibriXEmulator:
     def mouse_click(self,pos):
         x,y=pos
         if self.screen=="desktop" and STATUS_H<y<H-TASKBAR_H:
-            index=min(5,max(0,y>=132)*4+min(3,x//80))
+            index=min(5,(4 if y>=114 else 0)+min(3,x//80))
             self.selection=index; self.open_app(self.apps[index][0])
         elif self.screen!="login" and x>W-16 and y<STATUS_H+14: self.close_top()
 
