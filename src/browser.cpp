@@ -447,7 +447,7 @@ String jsValue(String expr, const std::vector<std::pair<String,String>>& vars) {
   };
   for (unsigned i=0;i<expr.length();i++) { char c=expr.charAt(i);
     if (quoted) { if (c==quote) quoted=false; else if (c=='\\' && i+1<expr.length()) out+=expr.charAt(++i); else out+=c; }
-    else if (c=='\\'' || c=='"' || c=='`') { flush(); quoted=true; quote=c; }
+    else if (c=='\'' || c=='"' || c=='`') { flush(); quoted=true; quote=c; }
     else if (c=='+') flush(); else if (c!=' ' && c!='\t' && c!='\r' && c!='\n') token+=c;
   }
   flush(); return out;
