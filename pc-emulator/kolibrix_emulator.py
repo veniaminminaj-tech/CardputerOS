@@ -103,23 +103,31 @@ class KolibriXEmulator:
         self.text(W-len(right)*6-4,3,right,CYAN)
 
     def desktop(self):
-        self.canvas.fill(DESK)
-        for y in range(STATUS_H,H-TASKBAR_H,4):
-            self.draw_line((16,42,38) if y<112 else (8,28,24),(0,y),(W,y))
+        # Windows 11-inspired blue wallpaper and centered taskbar.
+        for y in range(H):
+            t=y/max(1,H-1)
+            col=(int(12+18*t),int(38+55*t),int(90+95*t))
+            self.draw_line(col,(0,y),(W,y))
+        pygame.draw.ellipse(self.canvas,(22,105,190),(105*SCALE,34*SCALE,220*SCALE,160*SCALE))
+        pygame.draw.ellipse(self.canvas,(15,65,145),(145*SCALE,60*SCALE,180*SCALE,120*SCALE))
         for i,(name,color) in enumerate(self.apps):
-            col,row=i%4,i//4; x=col*80+26; y=STATUS_H+14+row*86
-            r=pygame.Rect(x,y,28,28); self.draw_rect(color,r,border_radius=5)
-            if i==self.selection: self.draw_rect(WHITE,r.inflate(4,4),1,border_radius=6)
-            self.text(x+10,y+9,name[0].upper())
-            self.text(col*80+max(2,(80-len(name)*6)//2),y+35,self.clip(name,12))
+            col,row=i//3,i%3
+            x=10+col*62; y=23+row*62
+            self.draw_rect((30,83,155),(x,y,34,34),border_radius=8)
+            self.draw_rect(color,(x+4,y+4,26,26),border_radius=6)
+            self.text(x+12,y+12,name[0].upper())
+            if i==self.selection: self.draw_rect((180,220,255),(x-2,y-2,38,38),1,border_radius=9)
+            self.text(x-4,y+37,self.clip(name,10))
         y=H-TASKBAR_H
-        self.draw_rect((65,65,65),(0,y,W,TASKBAR_H))
-        self.draw_line(WHITE,(0,y),(W,y))
-        self.draw_rect((195,195,195),(4,y+3,66,16),border_radius=3)
-        self.text(10,y+7,"K  Start",BLACK)
-        self.draw_rect((30,30,30),(76,y+3,84,16),border_radius=3)
-        self.text(82,y+7,"KolibriX")
-        self.text(170,y+7,"SD: ready",GREEN)
+        self.draw_rect((22,34,58),(34,y+2,252,19),border_radius=8)
+        self.draw_rect((65,100,155),(34,y+2,252,19),1,border_radius=8)
+        self.draw_rect((55,135,230),(82,y+5,15,13),border_radius=3)
+        self.text(87,y+7,"K")
+        for j,(glyph,color) in enumerate([("S",(75,145,245)),("F",(50,185,145)),("B",(105,135,245))]):
+            xx=112+j*27
+            self.draw_rect(color,(xx,y+5,15,13),border_radius=4)
+            self.text(xx+5,y+7,glyph)
+        self.text(205,y+7,"WiFi")
 
     def window_frame(self,title):
         self.canvas.fill(DESK)
