@@ -10,7 +10,7 @@ STATUS_H, TASKBAR_H = 14, 22
 DESK=(8,16,8); DGRAY=(32,32,32); WHITE=(245,245,245); GRAY=(145,145,145)
 GREEN=(0,235,100); CYAN=(0,220,230); YELLOW=(255,225,70); BLACK=(0,0,0)
 TITLE_ON=(25,105,155)
-ROOT=Path(__file__).resolve().parent
+ROOT=Path(sys.executable).resolve().parent if getattr(sys,"frozen",False) else Path(__file__).resolve().parent
 SD_ROOT=ROOT/"sdcard"
 for folder in ("apps","documents","downloads","root"):
     (SD_ROOT/folder).mkdir(parents=True,exist_ok=True)
