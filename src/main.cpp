@@ -40,6 +40,7 @@ struct Launcher {
 
 static std::vector<Launcher> g_apps;
 static int g_sel = 0;        // выбранная иконка
+static bool g_startOpen = false;
 static int g_rowTop = 0;     // первая видимая строка сетки
 // Компактная сетка 4x2 для экрана 320x240.
 static const int TASKBAR_H = 22;
@@ -147,6 +148,25 @@ static void drawTaskbar() {
   tft.fillRoundRect(193, y + 5, 13, 13, 4, 0x5D7F);
   tft.setTextColor(COL_WHITE, 0x212B);
   drawText(244, y + 7, g_sdOk ? "SD" : "--");
+  if (g_startOpen) {
+    tft.fillRoundRect(66, 53, 188, 126, 9, 0x1827);
+    tft.drawRoundRect(66, 53, 188, 126, 9, 0x7DDF);
+    tft.setTextColor(COL_WHITE, 0x1827);
+    drawText(78, 64, "Pinned");
+    for (int j = 0; j < (int)g_apps.size() && j < 6; j++) {
+      int x = 78 + (j % 3) * 56;
+      int yy = 84 + (j / 3) * 37;
+      tft.fillRoundRect(x, yy, 18, 18, 5, g_apps[j].color);
+      tft.setTextColor(COL_WHITE, g_apps[j].color);
+      String glyph = g_apps[j].name.substring(0, 1);
+      glyph.toUpperCase();
+      drawText(x + 6, yy + 5, glyph);
+      tft.setTextColor(COL_WHITE, 0x1827);
+      String label = g_apps[j].name.length() > 9 ? g_apps[j].name.substring(0, 8) : g_apps[j].name;
+      drawText(x - 4, yy + 20, label);
+    }
+    drawText(80, 158, "KolibriX | Power");
+  }
 }
 
 static void drawStatus() {
@@ -169,6 +189,10 @@ static void redrawAll() {
 // ---------- Ввод ----------
 // Клавиши рабочего стола (когда стол показан)
 static void desktopKey(const KeyEvent& k) {
+  if (!k.ctrl && !k.alt && lowerc(k.ch) == 'm') {
+    g_startOpen = !g_startOpen;
+    return;
+  }
   if (k.ctrl && lowerc(k.ch) == 'r') {
     scanApps();                                   // Ctrl+R — перечитать /apps
   } else if (k.enter && !g_apps.empty()) {
