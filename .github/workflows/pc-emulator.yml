@@ -1,0 +1,37 @@
+name: KolibriX PC Emulator
+
+on:
+  push:
+    branches: [kolibrix-pc-emulator]
+    paths:
+      - "pc-emulator/**"
+      - ".github/workflows/pc-emulator.yml"
+  pull_request:
+    branches: [kolibrix-pc-emulator]
+    paths:
+      - "pc-emulator/**"
+      - ".github/workflows/pc-emulator.yml"
+  workflow_dispatch:
+
+jobs:
+  windows-build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r pc-emulator/requirements.txt pyinstaller
+      - name: Build EXE
+        run: pyinstaller --noconfirm --clean --onefile --windowed --name KolibriX-Emulator pc-emulator/kolibrix_emulator.py
+      - name: Upload Windows emulator
+        uses: actions/upload-artifact@v4
+        with:
+          name: KolibriX-PC-Emulator-Windows
+          path: dist/KolibriX-Emulator.exe
+          if-no-files-found: error
