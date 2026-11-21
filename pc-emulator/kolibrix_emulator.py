@@ -312,18 +312,20 @@ class KolibriXEmulator:
             self.screen="desktop"; self.login_error=""; self.toast="Welcome, root"
             return
         if self.screen=="desktop" and self.control_mode=="mouse":
-            if H-TASKBAR_H+2 <= y < H and 82 <= x <= 99:
+            if H-TASKBAR_H+2 <= y < H and 88 <= x <= 154:
                 self.start_open=not self.start_open
                 return
             if self.start_open and 78 <= x <= 238 and 80 <= y <= 151:
                 col=min(2,max(0,(x-78)//56)); row=min(1,max(0,(y-84)//37))
                 index=row*3+col
-                if index<len(self.apps):
+                if index<len(self.apps[:6]):
                     self.selection=index; self.start_open=False; self.open_app(self.apps[index][0])
                 return
-            if STATUS_H<y<H-TASKBAR_H:
-                index=min(5,(4 if y>=114 else 0)+min(3,x//80))
-                self.selection=index; self.open_app(self.apps[index][0])
+            if STATUS_H+20 <= y < H-TASKBAR_H:
+                col=min(3,max(0,x//80)); row=0 if y<STATUS_H+7+((H-STATUS_H-TASKBAR_H)//2) else 1
+                index=row*4+col
+                if index<len(self.apps):
+                    self.selection=index; self.open_app(self.apps[index][0])
         elif self.screen!="login" and x>W-16 and y<STATUS_H+14: self.close_top()
 
     def run(self):
