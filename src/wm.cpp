@@ -96,21 +96,26 @@ void wmCloseAll() {
 }
 
 void wmDrawAll() {
-  tft.fillRect(0, STATUS_H, SCR_W, SCR_H - STATUS_H, COL_DESK);
+  tft.fillRect(0, STATUS_H, SCR_W, SCR_H - STATUS_H, 0x1028);
   for (size_t i = 0; i < g_win.size(); i++) {
     const Win& w = g_win[i];
     bool top = (i + 1 == g_win.size());
+    uint16_t frame = top ? 0x3D9F : 0x2940;
+    uint16_t edge = top ? 0xBFFF : COL_GRAY;
 
-    uint16_t tbg = top ? COL_TITLE_ON : COL_TITLE_OFF;
-    tft.fillRect(w.r.x, w.r.y, w.r.w, TITLE_H, tbg);
-    tft.setTextColor(COL_WHITE, tbg);
-    drawText(w.r.x + 4, w.r.y + 2, w.app->title());
+    // Rounded Windows 11-inspired window card and blue title bar.
+    tft.fillRoundRect(w.r.x, w.r.y, w.r.w, w.r.h, 7, 0x1028);
+    tft.fillRoundRect(w.r.x, w.r.y, w.r.w, TITLE_H + 4, 7, frame);
+    tft.fillRect(w.r.x, w.r.y + TITLE_H - 2, w.r.w, 4, frame);
+    tft.setTextColor(COL_WHITE, frame);
+    drawText(w.r.x + 5, w.r.y + 2, w.app->title());
 
-    Box body{w.r.x, w.r.y + TITLE_H, w.r.w, w.r.h - TITLE_H};
+    // Small close control at the right side of the title bar.
+    tft.fillRoundRect(w.r.x + w.r.w - 13, w.r.y + 2, 9, 8, 3, 0xD965);
+    Box body{w.r.x, w.r.y + TITLE_H + 2, w.r.w, w.r.h - TITLE_H - 2};
     tft.setClipRect(body.x, body.y, body.w, body.h);
     w.app->draw(body, top);
     tft.clearClipRect();
-
-    tft.drawRect(w.r.x, w.r.y, w.r.w, w.r.h, top ? COL_WHITE : COL_GRAY);
+    tft.drawRoundRect(w.r.x, w.r.y, w.r.w, w.r.h, 7, edge);
   }
 }
