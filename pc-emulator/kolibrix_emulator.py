@@ -32,8 +32,8 @@ class KolibriXEmulator:
         self.running=True; self.user="root"; self.password=""; self.login_field=0; self.login_error=""
         self.screen="controls"; self.control_choice=0; self.control_mode="keyboard"; self.selection=0; self.start_open=False; self.brightness=200; self.settings_sel=0
         self.apps=[
-            ("Settings",(120,120,120)),("Browser",(20,150,210)),("Shell",(0,105,50)),
-            ("Telegram",(35,145,200)),("Device",(30,175,90)),("Files",(0,145,210))]
+            ("Settings",(132,130,132)),("Browser",(24,83,255)),("Shell",(0,105,0)),
+            ("Telegram",(48,179,255)),("Device",(0,255,132)),("Files",(0,125,255))]
         self.file_path=Path("/"); self.file_items=[]; self.file_selection=0
         self.file_view=None; self.file_view_name=""
         self.term_input=""; self.term_lines=["KolibriX 0.1 PC simulator","Type 'help' for commands.",""]
@@ -103,42 +103,43 @@ class KolibriXEmulator:
         self.text(W-len(right)*6-4,3,right,CYAN)
 
     def desktop(self):
-        # Windows 11-inspired blue wallpaper and centered taskbar.
-        for y in range(H):
-            t=y/max(1,H-1)
-            col=(int(12+18*t),int(38+55*t),int(90+95*t))
-            self.draw_line(col,(0,y),(W,y))
-        pygame.draw.ellipse(self.canvas,(22,105,190),(105*SCALE,34*SCALE,220*SCALE,160*SCALE))
-        pygame.draw.ellipse(self.canvas,(15,65,145),(145*SCALE,60*SCALE,180*SCALE,120*SCALE))
+        # Same desktop geometry and palette as the Cardputer firmware.
+        for y in range(STATUS_H,H-TASKBAR_H,2):
+            t=int((y-STATUS_H)*255/max(1,H-STATUS_H-TASKBAR_H))
+            r=5+(t*12//255); g=28+(t*34//255); b=78+(t*75//255)
+            self.draw_rect((r,g,b),(0,y,W,2))
+        pygame.draw.circle(self.canvas,(24,77,255),(260*SCALE,112*SCALE),76*SCALE)
+        pygame.draw.circle(self.canvas,(16,89,197),(280*SCALE,105*SCALE),55*SCALE)
+        pygame.draw.circle(self.canvas,(8,77,148),(296*SCALE,99*SCALE),34*SCALE)
+        icon_cols=4; icon_w=W//icon_cols; icon_h=(H-STATUS_H-TASKBAR_H)//2; icon_sz=28
         for i,(name,color) in enumerate(self.apps):
-            col,row=i//3,i%3
-            x=10+col*62; y=23+row*62
-            self.draw_rect((30,83,155),(x,y,34,34),border_radius=8)
-            self.draw_rect(color,(x+4,y+4,26,26),border_radius=6)
-            self.text(x+12,y+12,name[0].upper())
-            if i==self.selection: self.draw_rect((180,220,255),(x-2,y-2,38,38),1,border_radius=9)
-            self.text(x-4,y+37,self.clip(name,10))
+            row=i//icon_cols; col=i%icon_cols
+            cell_x=col*icon_w; cell_y=STATUS_H+7+row*icon_h
+            ix=cell_x+(icon_w-icon_sz)//2; iy=cell_y+3
+            self.draw_rect((45,95,160),(ix-2,iy-2,icon_sz+4,icon_sz+4),border_radius=8)
+            self.draw_rect(color,(ix,iy,icon_sz,icon_sz),border_radius=7)
+            self.text(ix+10,iy+8,name[0].upper())
+            if i==self.selection: self.draw_rect(WHITE,(ix-3,iy-3,icon_sz+6,icon_sz+6),1,border_radius=8)
+            self.text(cell_x+max(1,(icon_w-len(name)*6)//2),iy+icon_sz+7,self.clip(name,icon_w//6))
         y=H-TASKBAR_H
-        self.draw_rect((22,34,58),(34,y+2,252,19),border_radius=8)
-        self.draw_rect((65,100,155),(34,y+2,252,19),1,border_radius=8)
-        self.draw_rect((55,135,230),(82,y+5,15,13),border_radius=3)
-        self.text(87,y+7,"K")
-        for j,(glyph,color) in enumerate([("S",(75,145,245)),("F",(50,185,145)),("B",(105,135,245))]):
-            xx=112+j*27
-            self.draw_rect(color,(xx,y+5,15,13),border_radius=4)
-            self.text(xx+5,y+7,glyph)
-        self.text(205,y+7,"WiFi")
+        self.draw_rect((32,69,90),(0,y,W,TASKBAR_H))
+        self.draw_line((107,159,255),(0,y),(W,y))
+        self.draw_rect((57,121,207),(88,y+2,144,18),border_radius=7)
+        self.draw_rect((125,191,255),(88,y+2,144,18),1,border_radius=7)
+        for xx,yy in [(99,y+6),(106,y+6),(99,y+13),(106,y+13)]: self.draw_rect(WHITE,(xx,yy,5,5))
+        self.text(117,y+7,'Start')
+        for xx,color in [(157,(45,159,255)),(175,(0,255,132)),(193,(93,175,255))]: self.draw_rect(color,(xx,y+5,13,13),border_radius=4)
+        self.text(244,y+7,'SD' if SD_ROOT.exists() else '--')
         if self.start_open:
             self.draw_rect((24,39,69),(66,53,188,126),border_radius=9)
-            self.draw_rect((85,125,180),(66,53,188,126),1,border_radius=9)
-            self.text(78,64,"Pinned")
-            for j,(name,color) in enumerate(self.apps):
+            self.draw_rect((125,223,255),(66,53,188,126),1,border_radius=9)
+            self.text(78,64,'Pinned')
+            for j,(name,color) in enumerate(self.apps[:6]):
                 xx=78+(j%3)*56; yy=84+(j//3)*37
                 self.draw_rect(color,(xx,yy,18,18),border_radius=5)
                 self.text(xx+6,yy+5,name[0])
                 self.text(xx-4,yy+20,self.clip(name,9))
-            self.text(80,158,"KolibriX | Power")
-
+            self.text(80,158,'KolibriX | Power')
     def window_frame(self,title):
         self.canvas.fill(DESK)
         self.draw_rect(TITLE_ON,(0,STATUS_H,W,12))
