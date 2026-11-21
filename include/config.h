@@ -1,6 +1,9 @@
 #pragma once
 // Конфигурация оборудования и экрана CardputerOS
 #include <M5GFX.h>
+#include <lgfx/v1/platforms/esp32/Bus_SPI.hpp>
+#include <lgfx/v1/platforms/esp32/Light_PWM.hpp>
+#include "panel_ili9341.h"
 
 // ---- Внешний TFT ILI9341 (320x240) на разъёме EXT 2.54-14P ----
 // ВНИМАНИЕ: значения ниже — примеры свободных GPIO. Сверьте с распиновкой
@@ -40,7 +43,7 @@ constexpr uint16_t COL_TITLE_ON  = 0x1A94;   // заголовок активн�
 constexpr uint16_t COL_TITLE_OFF = 0x4208;
 
 class CardDisplay : public lgfx::LGFX_Device {
-  lgfx::Panel_ILI9341 _panel;
+  lgfx::Panel_KolibriX_ILI9341 _panel;
   lgfx::Bus_SPI _bus;
   lgfx::Light_PWM _light;
 
