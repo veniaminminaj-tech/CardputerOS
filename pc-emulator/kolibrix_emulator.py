@@ -280,12 +280,12 @@ class KolibriXEmulator:
             self.window.blit(scaled,((self.window.get_width()-vw)//2,
                                      (self.window.get_height()-vh)//2))
             pygame.display.flip(); self.clock.tick(FPS)
+        pygame.quit()
 
     def viewport(self):
         ww,wh=self.window.get_size()
         scale=min(ww/(W*SCALE),wh/(H*SCALE))
         return max(1,round(W*SCALE*scale)),max(1,round(H*SCALE*scale))
-        pygame.quit()
 
 if __name__=="__main__":
     try: KolibriXEmulator().run()
