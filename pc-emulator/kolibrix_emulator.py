@@ -7,9 +7,9 @@ import pygame
 
 W, H, SCALE, FPS = 320, 240, 4, 30
 STATUS_H, TASKBAR_H = 14, 22
-DESK=(8,16,8); DGRAY=(32,32,32); WHITE=(245,245,245); GRAY=(145,145,145)
+DESK=(18,55,112); DGRAY=(24,35,58); WHITE=(245,248,255); GRAY=(165,185,215)
 GREEN=(0,235,100); CYAN=(0,220,230); YELLOW=(255,225,70); BLACK=(0,0,0)
-TITLE_ON=(25,105,155)
+TITLE_ON=(35,95,175)
 ROOT=Path(sys.executable).resolve().parent if getattr(sys,"frozen",False) else Path(__file__).resolve().parent
 SD_ROOT=ROOT/"sdcard"
 for folder in ("apps","documents","downloads","root"):
