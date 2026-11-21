@@ -38,24 +38,39 @@ void drawProgress(int pct) {
 }
 
 void drawMenu() {
-  tft.fillScreen(COL_BLACK);
-  drawLine(10, 8, "KolibriX launcher", COL_GREEN, COL_BLACK);
+  // Windows 11-inspired boot menu for the Cardputer's 320x240 display.
+  for (int y = 0; y < 240; y += 2) {
+    uint8_t t = (uint8_t)(y * 255 / 240);
+    uint8_t r = 4 + (t * 10 / 255);
+    uint8_t g = 24 + (t * 28 / 255);
+    uint8_t b = 72 + (t * 72 / 255);
+    uint16_t c = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+    tft.fillRect(0, y, 320, 2, c);
+  }
+  tft.fillCircle(278, 72, 62, 0x1A7F);
+  tft.fillCircle(294, 65, 42, 0x12D8);
+  tft.fillRoundRect(18, 16, 284, 204, 14, 0x212B);
+  tft.drawRoundRect(18, 16, 284, 204, 14, 0x7DDF);
+  drawLine(32, 27, "KolibriX", COL_WHITE, 0x212B);
+  drawLine(32, 43, "Choose your system", COL_GRAY, 0x212B);
   for (int i = 0; i < kCount; i++) {
-    int y = 40 + i * 22;
+    int y = 66 + i * 34;
     bool on = (i == sel);
-    uint16_t bg = on ? COL_WHITE : COL_BLACK;
-    uint16_t fg = on ? COL_BLACK : COL_WHITE;
-    tft.fillRect(8, y - 3, 304, 18, bg);
-    drawLine(14, y, kLabel[i], fg, bg);
+    uint16_t bg = on ? 0x3D9F : 0x2940;
+    uint16_t fg = COL_WHITE;
+    tft.fillRoundRect(28, y - 4, 264, 28, 7, bg);
+    if (on) tft.drawRoundRect(28, y - 4, 264, 28, 7, 0xBFFF);
+    tft.fillRoundRect(36, y + 1, 18, 18, 5, on ? 0x7DFF : 0x4D7F);
+    drawLine(42, y + 6, String(i + 1), COL_WHITE, on ? 0x3D9F : 0x4D7F);
+    drawLine(64, y + 4, kLabel[i], fg, bg);
   }
   if (!autoCancelled && sel < 2) {
     uint32_t el = millis() - bootStart;
     int left = (el >= kAutoMs) ? 0 : (int)((kAutoMs - el) / 1000) + 1;
-    drawLine(10, 150, "Auto-start in " + String(left) + " s, press a key to choose",
-             COL_YELLOW, COL_BLACK);
+    drawLine(32, 174, "Auto-start in " + String(left) + " s", COL_YELLOW, 0x212B);
   }
-  if (!status.isEmpty()) drawLine(10, 176, status, COL_ORANGE, COL_BLACK);
-  drawLine(10, 220, "W/S select   Enter run", COL_GRAY, COL_BLACK);
+  if (!status.isEmpty()) drawLine(32, 190, status, COL_ORANGE, 0x212B);
+  drawLine(32, 205, "LEFT/RIGHT or W/S  |  ENTER", COL_GRAY, 0x212B);
   dirty = false;
 }
 
@@ -190,8 +205,8 @@ void loop() {
     auto st = M5Cardputer.Keyboard.keysState();
     autoCancelled = true;                       // будь-яка клавіша зупиняє автозапуск
     for (char c : st.word) {
-      if ((c == 'w' || c == ';') && sel > 0) { sel--; dirty = true; }
-      else if ((c == 's' || c == '.') && sel < kCount - 1) { sel++; dirty = true; }
+      if ((c == 'w' || c == ';' || c == ',') && sel > 0) { sel--; dirty = true; }
+      else if ((c == 's' || c == '.' || c == '/') && sel < kCount - 1) { sel++; dirty = true; }
     }
     if (st.enter) activate();
   }
