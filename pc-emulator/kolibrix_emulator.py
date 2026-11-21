@@ -30,7 +30,7 @@ class KolibriXEmulator:
         self.font=pygame.font.Font(font_path,10*SCALE)
         self.big=pygame.font.Font(font_path,17*SCALE)
         self.running=True; self.user="root"; self.password=""; self.login_field=0; self.login_error=""
-        self.screen="login"; self.selection=0; self.brightness=200; self.settings_sel=0
+        self.screen="controls"; self.control_choice=0; self.control_mode="keyboard"; self.selection=0; self.brightness=200; self.settings_sel=0
         self.apps=[
             ("Settings",(120,120,120)),("Browser",(20,150,210)),("Shell",(0,105,50)),
             ("Telegram",(35,145,200)),("Device",(30,175,90)),("Files",(0,145,210))]
@@ -71,12 +71,29 @@ class KolibriXEmulator:
     def clip(self,s,n):
         s=str(s); return s if len(s)<=n else s[:max(0,n-1)]+"."
 
+    def draw_controls(self):
+        self.canvas.fill(BLACK)
+        self.text(12,27,"KOLIBRIX",GREEN,self.big)
+        self.text(12,55,"Choose control method")
+        self.text(12,82,"How do you want to control the desktop?")
+        options=[("Mouse","Click icons and buttons"),("Keyboard","Use LEFT / RIGHT arrows")]
+        for i,(name,description) in enumerate(options):
+            x=18+i*146
+            selected=i==self.control_choice
+            self.draw_rect((35,75,65) if selected else (35,35,35),(x,112,132,58),border_radius=5)
+            self.draw_rect(GREEN if selected else GRAY,(x,112,132,58),1,border_radius=5)
+            self.text(x+10,122,("> " if selected else "  ")+name,GREEN if selected else WHITE)
+            self.text(x+8,145,description,WHITE)
+        self.text(12,190,"LEFT / RIGHT: choose   ENTER: confirm",YELLOW)
+        self.text(12,220,"KolibriX PC Emulator",GRAY)
+
     def login(self):
         self.canvas.fill(BLACK); self.text(12,27,"KOLIBRIX",GREEN,self.big)
         self.text(12,48,"CardputerOS login")
         self.text(12,86,"> login: root",GREEN)
         self.text(12,112,self.login_error or "Password: not required",YELLOW)
-        self.text(12,160,"User: root"); self.text(12,173,"Press Enter to continue")
+        self.text(12,160,"User: root")
+        self.text(12,173,"Press Enter or click to continue")
         self.text(12,220,"KolibriX PC Emulator",GRAY)
 
     def status(self):
@@ -189,7 +206,7 @@ class KolibriXEmulator:
         self.text(5,225,"Esc / Ctrl+W: close",GRAY)
 
     def draw(self):
-        screens={"login":self.login,"desktop":self.desktop,"files":self.draw_files,
+        screens={"controls":self.draw_controls,"login":self.login,"desktop":self.desktop,"files":self.draw_files,
                  "terminal":self.draw_terminal,"settings":self.draw_settings,
                  "device":self.draw_device,"browser":self.draw_browser,"telegram":self.draw_telegram}
         screens.get(self.screen,self.desktop)(); self.status()
@@ -203,6 +220,13 @@ class KolibriXEmulator:
     def close_top(self): self.screen="desktop"
 
     def keydown(self,e):
+        if self.screen=="controls":
+            if e.key in (pygame.K_LEFT,pygame.K_a): self.control_choice=0
+            elif e.key in (pygame.K_RIGHT,pygame.K_d): self.control_choice=1
+            elif e.key in (pygame.K_RETURN,pygame.K_SPACE):
+                self.control_mode="mouse" if self.control_choice==0 else "keyboard"
+                self.screen="login"
+            return
         if self.screen=="login":
             if e.key==pygame.K_RETURN:
                 self.user="root"; self.password=""
@@ -215,11 +239,12 @@ class KolibriXEmulator:
         if e.key==pygame.K_t and e.mod&pygame.KMOD_CTRL and e.mod&pygame.KMOD_ALT:
             self.screen="terminal"; return
         if self.screen=="desktop":
-            if e.key in (pygame.K_LEFT,pygame.K_a): self.selection=max(0,self.selection-1)
-            elif e.key in (pygame.K_RIGHT,pygame.K_d): self.selection=min(len(self.apps)-1,self.selection+1)
-            elif e.key in (pygame.K_UP,pygame.K_w): self.selection=max(0,self.selection-4)
-            elif e.key in (pygame.K_DOWN,pygame.K_s): self.selection=min(len(self.apps)-1,self.selection+4)
-            elif e.key in (pygame.K_RETURN,pygame.K_SPACE): self.open_app(self.apps[self.selection][0])
+            if self.control_mode=="keyboard":
+                if e.key in (pygame.K_LEFT,pygame.K_a): self.selection=max(0,self.selection-1)
+                elif e.key in (pygame.K_RIGHT,pygame.K_d): self.selection=min(len(self.apps)-1,self.selection+1)
+                elif e.key in (pygame.K_UP,pygame.K_w): self.selection=max(0,self.selection-4)
+                elif e.key in (pygame.K_DOWN,pygame.K_s): self.selection=min(len(self.apps)-1,self.selection+4)
+                elif e.key in (pygame.K_RETURN,pygame.K_SPACE): self.open_app(self.apps[self.selection][0])
         elif self.screen=="terminal":
             if e.key==pygame.K_RETURN: self.command(self.term_input); self.term_input=""
             elif e.key==pygame.K_BACKSPACE: self.term_input=self.term_input[:-1]
@@ -256,7 +281,17 @@ class KolibriXEmulator:
 
     def mouse_click(self,pos):
         x,y=pos
-        if self.screen=="desktop" and STATUS_H<y<H-TASKBAR_H:
+        if self.screen=="controls":
+            if 112 <= y <= 170:
+                self.control_choice=0 if x<160 else 1
+                self.control_mode="mouse" if self.control_choice==0 else "keyboard"
+                self.screen="login"
+            return
+        if self.screen=="login":
+            self.user="root"; self.password=""
+            self.screen="desktop"; self.login_error=""; self.toast="Welcome, root"
+            return
+        if self.screen=="desktop" and self.control_mode=="mouse" and STATUS_H<y<H-TASKBAR_H:
             index=min(5,(4 if y>=114 else 0)+min(3,x//80))
             self.selection=index; self.open_app(self.apps[index][0])
         elif self.screen!="login" and x>W-16 and y<STATUS_H+14: self.close_top()
