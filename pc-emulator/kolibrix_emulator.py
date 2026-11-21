@@ -116,23 +116,23 @@ class KolibriXEmulator:
             row=i//icon_cols; col=i%icon_cols
             cell_x=col*icon_w; cell_y=STATUS_H+7+row*icon_h
             ix=cell_x+(icon_w-icon_sz)//2; iy=cell_y+3
-            self.draw_rect((45,95,160),(ix-2,iy-2,icon_sz+4,icon_sz+4),border_radius=8)
+            self.draw_rect((41,174,255),(ix-2,iy-2,icon_sz+4,icon_sz+4),border_radius=8)
             self.draw_rect(color,(ix,iy,icon_sz,icon_sz),border_radius=7)
             self.text(ix+10,iy+8,name[0].upper())
             if i==self.selection: self.draw_rect(WHITE,(ix-3,iy-3,icon_sz+6,icon_sz+6),1,border_radius=8)
             self.text(cell_x+max(1,(icon_w-len(name)*6)//2),iy+icon_sz+7,self.clip(name,icon_w//6))
         y=H-TASKBAR_H
-        self.draw_rect((32,69,90),(0,y,W,TASKBAR_H))
-        self.draw_line((107,159,255),(0,y),(W,y))
-        self.draw_rect((57,121,207),(88,y+2,144,18),border_radius=7)
-        self.draw_rect((125,191,255),(88,y+2,144,18),1,border_radius=7)
+        self.draw_rect((33,36,90),(0,y,W,TASKBAR_H))
+        self.draw_line((107,113,255),(0,y),(W,y))
+        self.draw_rect((57,57,123),(88,y+2,144,18),border_radius=7)
+        self.draw_rect((123,186,255),(88,y+2,144,18),1,border_radius=7)
         for xx,yy in [(99,y+6),(106,y+6),(99,y+13),(106,y+13)]: self.draw_rect(WHITE,(xx,yy,5,5))
         self.text(117,y+7,'Start')
         for xx,color in [(157,(45,159,255)),(175,(0,255,132)),(193,(93,175,255))]: self.draw_rect(color,(xx,y+5,13,13),border_radius=4)
         self.text(244,y+7,'SD' if SD_ROOT.exists() else '--')
         if self.start_open:
-            self.draw_rect((24,39,69),(66,53,188,126),border_radius=9)
-            self.draw_rect((125,223,255),(66,53,188,126),1,border_radius=9)
+            self.draw_rect((24,4,57),(66,53,188,126),border_radius=9)
+            self.draw_rect((123,186,255),(66,53,188,126),1,border_radius=9)
             self.text(78,64,'Pinned')
             for j,(name,color) in enumerate(self.apps[:6]):
                 xx=78+(j%3)*56; yy=84+(j//3)*37
