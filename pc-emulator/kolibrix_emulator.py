@@ -97,9 +97,10 @@ class KolibriXEmulator:
         self.text(12,220,"KolibriX PC Emulator",GRAY)
 
     def status(self):
-        self.draw_rect(DGRAY,(0,0,W,STATUS_H))
-        self.text(4,3,"KolibriX  "+(self.user or "locked"))
-        right="PC SIM  "+time.strftime("%H:%M")
+        # macOS-inspired compact menu bar shared with the Cardputer build.
+        self.draw_rect((20,31,57),(0,0,W,STATUS_H))
+        self.text(4,3,"KX  File  Edit  View",WHITE)
+        right="PC  "+time.strftime("%H:%M")
         self.text(W-len(right)*6-4,3,right,CYAN)
 
     def desktop(self):
@@ -121,15 +122,20 @@ class KolibriXEmulator:
             self.text(ix+10,iy+8,name[0].upper())
             if i==self.selection: self.draw_rect(WHITE,(ix-3,iy-3,icon_sz+6,icon_sz+6),1,border_radius=8)
             self.text(cell_x+max(1,(icon_w-len(name)*6)//2),iy+icon_sz+7,self.clip(name,icon_w//6))
+        # macOS-style floating Dock with iOS-like rounded app tiles;
+        # the Windows 11 Start mark remains at the left of the same capsule.
         y=H-TASKBAR_H
-        self.draw_rect((33,36,90),(0,y,W,TASKBAR_H))
-        self.draw_line((107,113,255),(0,y),(W,y))
-        self.draw_rect((57,57,123),(88,y+2,144,18),border_radius=7)
-        self.draw_rect((123,186,255),(88,y+2,144,18),1,border_radius=7)
-        for xx,yy in [(99,y+6),(106,y+6),(99,y+13),(106,y+13)]: self.draw_rect(WHITE,(xx,yy,5,5))
-        self.text(117,y+7,'Start')
-        for xx,color in [(157,(45,159,255)),(175,(0,255,132)),(193,(93,175,255))]: self.draw_rect(color,(xx,y+5,13,13),border_radius=4)
-        self.text(244,y+7,'SD' if SD_ROOT.exists() else '--')
+        self.draw_rect((12,23,53),(0,y,W,TASKBAR_H))
+        self.draw_line((74,103,173),(0,y),(W,y))
+        self.draw_rect((42,55,91),(72,y+1,176,20),border_radius=9)
+        self.draw_rect((119,157,218),(72,y+1,176,20),1,border_radius=9)
+        for xx,yy in [(80,y+5),(86,y+5),(80,y+11),(86,y+11)]:
+            self.draw_rect(WHITE,(xx,yy,4,4))
+        for xx,color in [(105,(132,130,132)),(126,(24,83,255)),(147,(0,105,0)),
+                         (168,(48,179,255)),(189,(0,255,132)),(210,(0,125,255))]:
+            self.draw_rect(color,(xx,y+3,15,15),border_radius=5)
+            self.draw_rect((205,220,255),(xx,y+3,15,15),1,border_radius=5)
+        self.text(232,y+7,'SD' if SD_ROOT.exists() else '--')
         if self.start_open:
             self.draw_rect((24,4,57),(66,53,188,126),border_radius=9)
             self.draw_rect((123,186,255),(66,53,188,126),1,border_radius=9)
