@@ -10,6 +10,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [kolibrix, launcher]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,16 +26,18 @@ jobs:
       - name: Install PlatformIO
         run: python -m pip install --upgrade platformio
 
-      - name: Build KolibriX firmware
-        run: pio run -e kolibrix
+      - name: Build ${{ matrix.environment }}
+        run: pio run -e ${{ matrix.environment }}
 
-      - name: Build SD launcher
-        run: pio run -e launcher
+      - name: Verify firmware binary
+        shell: bash
+        run: |
+          test -s ".pio/build/${{ matrix.environment }}/firmware.bin"
+          stat -c "Firmware size: %s bytes" ".pio/build/${{ matrix.environment }}/firmware.bin"
 
-      - name: Upload firmware binaries
+      - name: Upload firmware binary
         uses: actions/upload-artifact@v4
         with:
-          name: kolibrix-cardputer-firmware
-          path: |
-            .pio/build/kolibrix/firmware.bin
-            .pio/build/launcher/firmware.bin
+          name: kolibrix-${{ matrix.environment }}-firmware
+          path: .pio/build/${{ matrix.environment }}/firmware.bin
+          if-no-files-found: error
