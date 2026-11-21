@@ -2,7 +2,7 @@ name: KolibriX firmware build
 
 on:
   push:
-    branches: [kolibrix-cardputer-adv]
+    branches: [kolibrix-cardputer-adv, kolibrix-pc-emulator]
   pull_request:
     branches: [kolibrix-cardputer-adv]
   workflow_dispatch:
