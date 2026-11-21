@@ -3,6 +3,7 @@
 #include <M5Cardputer.h>
 #include <SD.h>
 #include <SPI.h>
+#include <Network.h>
 #include <WiFi.h>
 #include <time.h>
 #include "core.h"
