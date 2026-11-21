@@ -27,7 +27,7 @@ class KolibriXEmulator:
         self.clock=pygame.time.Clock()
         self.font=pygame.font.Font(None,10)
         self.big=pygame.font.Font(None,17)
-        self.running=True; self.user=""; self.password=""; self.login_field=0; self.login_error=""
+        self.running=True; self.user="root"; self.password=""; self.login_field=0; self.login_error=""
         self.screen="login"; self.selection=0; self.brightness=200; self.settings_sel=0
         self.apps=[
             ("Settings",(120,120,120)),("Browser",(20,150,210)),("Shell",(0,105,50)),
@@ -35,7 +35,7 @@ class KolibriXEmulator:
         self.file_path=Path("/"); self.file_items=[]; self.file_selection=0
         self.file_view=None; self.file_view_name=""
         self.term_input=""; self.term_lines=["KolibriX 0.1 PC simulator","Type 'help' for commands.",""]
-        self.term_history=[]; self.toast="PC simulator | root / root"
+        self.term_history=[]; self.toast="PC simulator | root (no password)"
         self.browser_url=""; self.browser_message="Browser is a UI placeholder in this build."
 
     def text(self,x,y,value,color=WHITE,font=None):
@@ -47,10 +47,9 @@ class KolibriXEmulator:
     def login(self):
         self.canvas.fill(BLACK); self.text(12,27,"KOLIBRIX",GREEN,self.big)
         self.text(12,48,"CardputerOS login")
-        self.text(12,78,("> " if self.login_field==0 else "  ")+"login:    "+self.user+("_" if self.login_field==0 else ""))
-        self.text(12,99,("> " if self.login_field==1 else "  ")+"password: "+"*"*len(self.password)+("_" if self.login_field==1 else ""))
-        self.text(12,132,self.login_error or "Demo account: root / root",YELLOW)
-        self.text(12,160,"Tab: switch field"); self.text(12,173,"Enter: next / login")
+        self.text(12,86,"> login: root",GREEN)
+        self.text(12,112,self.login_error or "Password: not required",YELLOW)
+        self.text(12,160,"User: root"); self.text(12,173,"Press Enter to continue")
         self.text(12,220,"KolibriX PC Emulator",GRAY)
 
     def status(self):
@@ -178,18 +177,9 @@ class KolibriXEmulator:
 
     def keydown(self,e):
         if self.screen=="login":
-            if e.key==pygame.K_TAB: self.login_field=1-self.login_field
-            elif e.key==pygame.K_RETURN:
-                if self.login_field==0: self.login_field=1
-                elif self.user=="root" and self.password=="root":
-                    self.screen="desktop"; self.login_error=""; self.toast="Welcome to KolibriX"
-                else: self.login_error="Login incorrect"; self.password=""; self.login_field=0
-            elif e.key==pygame.K_BACKSPACE:
-                if self.login_field==0: self.user=self.user[:-1]
-                else: self.password=self.password[:-1]
-            elif e.unicode and e.unicode.isprintable():
-                if self.login_field==0 and len(self.user)<24: self.user+=e.unicode
-                elif self.login_field==1 and len(self.password)<24: self.password+=e.unicode
+            if e.key==pygame.K_RETURN:
+                self.user="root"; self.password=""
+                self.screen="desktop"; self.login_error=""; self.toast="Welcome, root"
             return
         if e.key==pygame.K_ESCAPE or (e.key==pygame.K_w and e.mod&pygame.KMOD_CTRL):
             self.close_top(); return
