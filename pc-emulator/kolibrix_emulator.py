@@ -5,7 +5,7 @@ import sys, time
 from pathlib import Path
 import pygame
 
-W, H, SCALE, FPS = 320, 240, 3, 30
+W, H, SCALE, FPS = 320, 240, 4, 30
 STATUS_H, TASKBAR_H = 14, 22
 DESK=(8,16,8); DGRAY=(32,32,32); WHITE=(245,245,245); GRAY=(145,145,145)
 GREEN=(0,235,100); CYAN=(0,220,230); YELLOW=(255,225,70); BLACK=(0,0,0)
@@ -22,11 +22,13 @@ class KolibriXEmulator:
     def __init__(self):
         pygame.init()
         pygame.display.set_caption("KolibriX PC Emulator")
-        self.window=pygame.display.set_mode((W*SCALE,H*SCALE),pygame.RESIZABLE)
-        self.canvas=pygame.Surface((W,H))
+        self.window=pygame.display.set_mode((1280,720),pygame.RESIZABLE)
+        # Render the existing 320x240 layout at 4x resolution.
+        self.canvas=pygame.Surface((W*SCALE,H*SCALE))
         self.clock=pygame.time.Clock()
-        self.font=pygame.font.Font(None,10)
-        self.big=pygame.font.Font(None,17)
+        font_path=self.find_font()
+        self.font=pygame.font.Font(font_path,10*SCALE)
+        self.big=pygame.font.Font(font_path,17*SCALE)
         self.running=True; self.user="root"; self.password=""; self.login_field=0; self.login_error=""
         self.screen="login"; self.selection=0; self.brightness=200; self.settings_sel=0
         self.apps=[
@@ -38,9 +40,34 @@ class KolibriXEmulator:
         self.term_history=[]; self.toast="PC simulator | root (no password)"
         self.browser_url=""; self.browser_message="Browser is a UI placeholder in this build."
 
+    @staticmethod
+    def find_font():
+        candidates = [
+            Path("C:/Windows/Fonts/arial.ttf"),
+            Path("C:/Windows/Fonts/segoeui.ttf"),
+            Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+            Path("/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf"),
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+        return None
+
     def text(self,x,y,value,color=WHITE,font=None):
-        s=(font or self.font).render(str(value).encode("ascii","replace").decode(),False,color)
-        self.canvas.blit(s,(x,y))
+        # Keep Unicode text and use antialiasing for crisp glyph edges.
+        s=(font or self.font).render(str(value),True,color)
+        self.canvas.blit(s,(round(x*SCALE),round(y*SCALE)))
+
+    def draw_rect(self,color,rect,width=0,border_radius=0):
+        x,y,w,h=rect
+        scaled=(round(x*SCALE),round(y*SCALE),round(w*SCALE),round(h*SCALE))
+        pygame.draw.rect(self.canvas,color,scaled,width=width*SCALE,
+                         border_radius=border_radius*SCALE)
+
+    def draw_line(self,color,start,end,width=1):
+        a=(round(start[0]*SCALE),round(start[1]*SCALE))
+        b=(round(end[0]*SCALE),round(end[1]*SCALE))
+        pygame.draw.line(self.canvas,color,a,b,width*SCALE)
     def clip(self,s,n):
         s=str(s); return s if len(s)<=n else s[:max(0,n-1)]+"."
 
@@ -53,7 +80,7 @@ class KolibriXEmulator:
         self.text(12,220,"KolibriX PC Emulator",GRAY)
 
     def status(self):
-        pygame.draw.rect(self.canvas,DGRAY,(0,0,W,STATUS_H))
+        self.draw_rect(DGRAY,(0,0,W,STATUS_H))
         self.text(4,3,"KolibriX  "+(self.user or "locked"))
         right="PC SIM  "+time.strftime("%H:%M")
         self.text(W-len(right)*6-4,3,right,CYAN)
@@ -61,28 +88,28 @@ class KolibriXEmulator:
     def desktop(self):
         self.canvas.fill(DESK)
         for y in range(STATUS_H,H-TASKBAR_H,4):
-            pygame.draw.line(self.canvas,(16,42,38) if y<112 else (8,28,24),(0,y),(W,y))
+            self.draw_line((16,42,38) if y<112 else (8,28,24),(0,y),(W,y))
         for i,(name,color) in enumerate(self.apps):
             col,row=i%4,i//4; x=col*80+26; y=STATUS_H+14+row*86
-            r=pygame.Rect(x,y,28,28); pygame.draw.rect(self.canvas,color,r,border_radius=5)
-            if i==self.selection: pygame.draw.rect(self.canvas,WHITE,r.inflate(4,4),1,border_radius=6)
+            r=pygame.Rect(x,y,28,28); self.draw_rect(color,r,border_radius=5)
+            if i==self.selection: self.draw_rect(WHITE,r.inflate(4,4),1,border_radius=6)
             self.text(x+10,y+9,name[0].upper())
             self.text(col*80+max(2,(80-len(name)*6)//2),y+35,self.clip(name,12))
         y=H-TASKBAR_H
-        pygame.draw.rect(self.canvas,(65,65,65),(0,y,W,TASKBAR_H))
-        pygame.draw.line(self.canvas,WHITE,(0,y),(W,y))
-        pygame.draw.rect(self.canvas,(195,195,195),(4,y+3,66,16),border_radius=3)
+        self.draw_rect((65,65,65),(0,y,W,TASKBAR_H))
+        self.draw_line(WHITE,(0,y),(W,y))
+        self.draw_rect((195,195,195),(4,y+3,66,16),border_radius=3)
         self.text(10,y+7,"K  Start",BLACK)
-        pygame.draw.rect(self.canvas,(30,30,30),(76,y+3,84,16),border_radius=3)
+        self.draw_rect((30,30,30),(76,y+3,84,16),border_radius=3)
         self.text(82,y+7,"KolibriX")
         self.text(170,y+7,"SD: ready",GREEN)
 
     def window_frame(self,title):
         self.canvas.fill(DESK)
-        pygame.draw.rect(self.canvas,TITLE_ON,(0,STATUS_H,W,12))
+        self.draw_rect(TITLE_ON,(0,STATUS_H,W,12))
         self.text(4,STATUS_H+2,title)
-        pygame.draw.rect(self.canvas,BLACK,(0,STATUS_H+12,W,H-STATUS_H-12))
-        pygame.draw.rect(self.canvas,WHITE,(0,STATUS_H,W,H-STATUS_H-1),1)
+        self.draw_rect(BLACK,(0,STATUS_H+12,W,H-STATUS_H-12))
+        self.draw_rect(WHITE,(0,STATUS_H,W,H-STATUS_H-1),1)
 
     def reload_files(self):
         target=SD_ROOT/str(self.file_path).lstrip("/")
@@ -101,7 +128,7 @@ class KolibriXEmulator:
         if not self.file_items: self.text(8,y0+25,"(empty folder)")
         for i,item in enumerate(self.file_items[:23]):
             sel=i==self.file_selection; yy=y0+12+i*8
-            if sel: pygame.draw.rect(self.canvas,WHITE,(1,yy-1,W-2,9))
+            if sel: self.draw_rect(WHITE,(1,yy-1,W-2,9))
             self.text(4,yy,self.clip(item.name+("/" if item.is_dir() else ""),50),
                       BLACK if sel else (CYAN if item.is_dir() else WHITE))
         self.text(3,225,"Enter: open | Backspace: parent",GRAY)
@@ -144,7 +171,7 @@ class KolibriXEmulator:
               "Wi-Fi        not connected (simulated)","Sign out","About"]
         for i,label in enumerate(rows):
             y=STATUS_H+32+i*17; selected=i==self.settings_sel
-            if selected: pygame.draw.rect(self.canvas,WHITE,(2,y-2,W-4,12))
+            if selected: self.draw_rect(WHITE,(2,y-2,W-4,12))
             self.text(6,y,label,BLACK if selected else WHITE)
         self.text(4,225,"W/S select | A/D change | Enter",GRAY)
     def draw_device(self):
@@ -240,10 +267,24 @@ class KolibriXEmulator:
                 if e.type==pygame.QUIT: self.running=False
                 elif e.type==pygame.KEYDOWN: self.keydown(e)
                 elif e.type==pygame.MOUSEBUTTONDOWN and e.button==1:
-                    self.mouse_click((e.pos[0]*W//self.window.get_width(),e.pos[1]*H//self.window.get_height()))
+                    vw,vh=self.viewport()
+                    ox=(self.window.get_width()-vw)//2
+                    oy=(self.window.get_height()-vh)//2
+                    mx,my=e.pos[0]-ox,e.pos[1]-oy
+                    if 0 <= mx < vw and 0 <= my < vh:
+                        self.mouse_click((mx*W//vw,my*H//vh))
             self.draw()
-            scaled=pygame.transform.scale(self.canvas,self.window.get_size())
-            self.window.blit(scaled,(0,0)); pygame.display.flip(); self.clock.tick(FPS)
+            self.window.fill(BLACK)
+            vw,vh=self.viewport()
+            scaled=pygame.transform.smoothscale(self.canvas,(vw,vh))
+            self.window.blit(scaled,((self.window.get_width()-vw)//2,
+                                     (self.window.get_height()-vh)//2))
+            pygame.display.flip(); self.clock.tick(FPS)
+
+    def viewport(self):
+        ww,wh=self.window.get_size()
+        scale=min(ww/(W*SCALE),wh/(H*SCALE))
+        return max(1,round(W*SCALE*scale)),max(1,round(H*SCALE*scale))
         pygame.quit()
 
 if __name__=="__main__":
