@@ -30,7 +30,7 @@ class KolibriXEmulator:
         self.font=pygame.font.Font(font_path,10*SCALE)
         self.big=pygame.font.Font(font_path,17*SCALE)
         self.running=True; self.user="root"; self.password=""; self.login_field=0; self.login_error=""
-        self.screen="controls"; self.control_choice=0; self.control_mode="keyboard"; self.selection=0; self.brightness=200; self.settings_sel=0
+        self.screen="controls"; self.control_choice=0; self.control_mode="keyboard"; self.selection=0; self.start_open=False; self.brightness=200; self.settings_sel=0
         self.apps=[
             ("Settings",(120,120,120)),("Browser",(20,150,210)),("Shell",(0,105,50)),
             ("Telegram",(35,145,200)),("Device",(30,175,90)),("Files",(0,145,210))]
@@ -128,6 +128,16 @@ class KolibriXEmulator:
             self.draw_rect(color,(xx,y+5,15,13),border_radius=4)
             self.text(xx+5,y+7,glyph)
         self.text(205,y+7,"WiFi")
+        if self.start_open:
+            self.draw_rect((24,39,69),(66,53,188,126),border_radius=9)
+            self.draw_rect((85,125,180),(66,53,188,126),1,border_radius=9)
+            self.text(78,64,"Pinned")
+            for j,(name,color) in enumerate(self.apps):
+                xx=78+(j%3)*56; yy=84+(j//3)*37
+                self.draw_rect(color,(xx,yy,18,18),border_radius=5)
+                self.text(xx+6,yy+5,name[0])
+                self.text(xx-4,yy+20,self.clip(name,9))
+            self.text(80,158,"KolibriX | Power")
 
     def window_frame(self,title):
         self.canvas.fill(DESK)
@@ -247,7 +257,8 @@ class KolibriXEmulator:
         if e.key==pygame.K_t and e.mod&pygame.KMOD_CTRL and e.mod&pygame.KMOD_ALT:
             self.screen="terminal"; return
         if self.screen=="desktop":
-            if self.control_mode=="keyboard":
+            if e.key==pygame.K_m: self.start_open=not self.start_open
+            elif self.control_mode=="keyboard":
                 if e.key in (pygame.K_LEFT,pygame.K_a): self.selection=max(0,self.selection-1)
                 elif e.key in (pygame.K_RIGHT,pygame.K_d): self.selection=min(len(self.apps)-1,self.selection+1)
                 elif e.key in (pygame.K_UP,pygame.K_w): self.selection=max(0,self.selection-4)
@@ -299,9 +310,19 @@ class KolibriXEmulator:
             self.user="root"; self.password=""
             self.screen="desktop"; self.login_error=""; self.toast="Welcome, root"
             return
-        if self.screen=="desktop" and self.control_mode=="mouse" and STATUS_H<y<H-TASKBAR_H:
-            index=min(5,(4 if y>=114 else 0)+min(3,x//80))
-            self.selection=index; self.open_app(self.apps[index][0])
+        if self.screen=="desktop" and self.control_mode=="mouse":
+            if H-TASKBAR_H+2 <= y < H and 82 <= x <= 99:
+                self.start_open=not self.start_open
+                return
+            if self.start_open and 78 <= x <= 238 and 80 <= y <= 151:
+                col=min(2,max(0,(x-78)//56)); row=min(1,max(0,(y-84)//37))
+                index=row*3+col
+                if index<len(self.apps):
+                    self.selection=index; self.start_open=False; self.open_app(self.apps[index][0])
+                return
+            if STATUS_H<y<H-TASKBAR_H:
+                index=min(5,(4 if y>=114 else 0)+min(3,x//80))
+                self.selection=index; self.open_app(self.apps[index][0])
         elif self.screen!="login" and x>W-16 and y<STATUS_H+14: self.close_top()
 
     def run(self):
