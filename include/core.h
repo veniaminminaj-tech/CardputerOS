@@ -96,7 +96,7 @@ inline String fsJoin(const String& dir, const String& name) {
 class LineSink : public Print {
 public:
   LineSink(std::vector<String>& lines, size_t maxLines, int cols)
-    : _lines(lines), _max(maxLines), _cols(cols) {}
+    : _lines(lines), _maxLines(maxLines), _cols(cols) {}
 
   size_t write(uint8_t c) override {
     if (_lines.empty()) _lines.push_back("");
@@ -107,13 +107,13 @@ public:
       if ((int)_lines.back().length() >= _cols) _lines.push_back("");   // перенос
       _lines.back() += (char)c;
     }
-    while (_lines.size() > _max) _lines.erase(_lines.begin());
+    while (_lines.size() > _maxLines) _lines.erase(_lines.begin());
     return 1;
   }
 
 private:
   std::vector<String>& _lines;
-  size_t _max;
+  size_t _maxLines;
   int _cols;
 };
 
