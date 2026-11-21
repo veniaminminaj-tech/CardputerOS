@@ -88,12 +88,19 @@ static void launch(int i) {
 
 // ---------- Рисование ----------
 static void drawDesktop() {
-  // Темно-бирюзовый рабочий стол.
-  tft.fillRect(0, STATUS_H, SCR_W, SCR_H - STATUS_H - TASKBAR_H, COL_DESK);
-  for (int y = STATUS_H; y < SCR_H - TASKBAR_H; y += 4) {
-    uint16_t shade = (y < 112) ? 0x10A3 : 0x0861;
-    tft.drawFastHLine(0, y, SCR_W, shade);
+  // Windows 11-inspired blue gradient wallpaper, adapted to 320x240.
+  for (int y = STATUS_H; y < SCR_H - TASKBAR_H; y += 2) {
+    uint8_t t = (uint8_t)((y - STATUS_H) * 255 / (SCR_H - STATUS_H - TASKBAR_H));
+    uint8_t r = 5 + (t * 12 / 255);
+    uint8_t g = 28 + (t * 34 / 255);
+    uint8_t b = 78 + (t * 75 / 255);
+    uint16_t c = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+    tft.fillRect(0, y, SCR_W, 2, c);
   }
+  // Abstract blue folded-ribbon motif.
+  tft.fillCircle(260, 112, 76, 0x1A7F);
+  tft.fillCircle(280, 105, 55, 0x12D8);
+  tft.fillCircle(296, 99, 34, 0x0A72);
   const int rowsVisible = (SCR_H - STATUS_H - TASKBAR_H) / ICON_H;
   int selRow = g_sel / ICON_COLS;
   if (selRow < g_rowTop) g_rowTop = selRow;
@@ -108,35 +115,38 @@ static void drawDesktop() {
     int ix = cx + (ICON_W - ICON_SZ) / 2;
     int iy = cy + 3;
 
-    tft.fillRoundRect(ix, iy, ICON_SZ, ICON_SZ, 5, L.color);
-    if (i == g_sel) tft.drawRoundRect(ix - 2, iy - 2, ICON_SZ + 4, ICON_SZ + 4, 6, COL_WHITE);
-
+    tft.fillRoundRect(ix - 2, iy - 2, ICON_SZ + 4, ICON_SZ + 4, 8, 0x2D7F);
+    tft.fillRoundRect(ix, iy, ICON_SZ, ICON_SZ, 7, L.color);
+    if (i == g_sel) tft.drawRoundRect(ix - 3, iy - 3, ICON_SZ + 6, ICON_SZ + 6, 8, COL_WHITE);
     char ch = L.name.charAt(0);
     if (ch >= 'a' && ch <= 'z') ch -= 32;
     tft.setTextColor(COL_WHITE, L.color);
     drawText(ix + (ICON_SZ - g_charW) / 2, iy + (ICON_SZ - g_lineH) / 2, String(ch));
-
-    // подпись обрезается по ширине ячейки (при шрифте 6 px это 8 символов)
     int maxc = ICON_W / g_charW;
     String label = ((int)L.name.length() > maxc) ? L.name.substring(0, maxc - 1) + "." : L.name;
-    tft.setTextColor(COL_WHITE, COL_DESK);
+    tft.setTextColor(COL_WHITE, 0x1234);
     drawText(cx + (ICON_W - (int)label.length() * g_charW) / 2, iy + ICON_SZ + 7, label);
   }
 }
 
 static void drawTaskbar() {
   const int y = SCR_H - TASKBAR_H;
-  tft.fillRect(0, y, SCR_W, TASKBAR_H, 0x4208);
-  tft.drawFastHLine(0, y, SCR_W, COL_WHITE);
-  tft.fillRoundRect(4, y + 3, 66, 16, 3, 0xC618);
-  tft.drawRoundRect(4, y + 3, 66, 16, 3, COL_WHITE);
-  tft.setTextColor(COL_BLACK, 0xC618);
-  drawText(10, y + 7, "K  Start");
-  tft.fillRoundRect(76, y + 3, 84, 16, 3, 0x2104);
-  tft.setTextColor(COL_WHITE, 0x2104);
-  drawText(82, y + 7, "KolibriX");
-  tft.setTextColor(COL_WHITE, 0x4208);
-  drawText(170, y + 7, g_sdOk ? "SD: ready" : "SD: missing");
+  tft.fillRect(0, y, SCR_W, TASKBAR_H, 0x212B);
+  tft.drawFastHLine(0, y, SCR_W, 0x6B9F);
+  tft.fillRoundRect(88, y + 2, 144, 18, 7, 0x39CF);
+  tft.drawRoundRect(88, y + 2, 144, 18, 7, 0x7DDF);
+  // Centered Windows-style Start mark.
+  tft.fillRect(99, y + 6, 5, 5, 0xFFFF);
+  tft.fillRect(106, y + 6, 5, 5, 0xFFFF);
+  tft.fillRect(99, y + 13, 5, 4, 0xFFFF);
+  tft.fillRect(106, y + 13, 5, 4, 0xFFFF);
+  tft.setTextColor(COL_WHITE, 0x39CF);
+  drawText(117, y + 7, "Start");
+  tft.fillRoundRect(157, y + 5, 13, 13, 4, 0x2D9F);
+  tft.fillRoundRect(175, y + 5, 13, 13, 4, 0x07F0);
+  tft.fillRoundRect(193, y + 5, 13, 13, 4, 0x5D7F);
+  tft.setTextColor(COL_WHITE, 0x212B);
+  drawText(244, y + 7, g_sdOk ? "SD" : "--");
 }
 
 static void drawStatus() {
