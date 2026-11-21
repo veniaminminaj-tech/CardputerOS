@@ -132,22 +132,25 @@ static void drawDesktop() {
 
 static void drawTaskbar() {
   const int y = SCR_H - TASKBAR_H;
-  tft.fillRect(0, y, SCR_W, TASKBAR_H, 0x212B);
-  tft.drawFastHLine(0, y, SCR_W, 0x6B9F);
-  tft.fillRoundRect(88, y + 2, 144, 18, 7, 0x39CF);
-  tft.drawRoundRect(88, y + 2, 144, 18, 7, 0x7DDF);
-  // Centered Windows-style Start mark.
-  tft.fillRect(99, y + 6, 5, 5, 0xFFFF);
-  tft.fillRect(106, y + 6, 5, 5, 0xFFFF);
-  tft.fillRect(99, y + 13, 5, 4, 0xFFFF);
-  tft.fillRect(106, y + 13, 5, 4, 0xFFFF);
-  tft.setTextColor(COL_WHITE, 0x39CF);
-  drawText(117, y + 7, "Start");
-  tft.fillRoundRect(157, y + 5, 13, 13, 4, 0x2D9F);
-  tft.fillRoundRect(175, y + 5, 13, 13, 4, 0x07F0);
-  tft.fillRoundRect(193, y + 5, 13, 13, 4, 0x5D7F);
-  tft.setTextColor(COL_WHITE, 0x212B);
-  drawText(244, y + 7, g_sdOk ? "SD" : "--");
+  // macOS-like floating Dock, iOS-like rounded icons, and Windows 11 Start mark.
+  tft.fillRect(0, y, SCR_W, TASKBAR_H, 0x08AA);
+  tft.drawFastHLine(0, y, SCR_W, 0x4B5F);
+  tft.fillRoundRect(72, y + 1, 176, 20, 9, 0x2AFC);
+  tft.drawRoundRect(72, y + 1, 176, 20, 9, 0x7DDF);
+  // Four-pane Start mark.
+  tft.fillRect(80, y + 5, 4, 4, 0xFFFF);
+  tft.fillRect(86, y + 5, 4, 4, 0xFFFF);
+  tft.fillRect(80, y + 11, 4, 4, 0xFFFF);
+  tft.fillRect(86, y + 11, 4, 4, 0xFFFF);
+  // Pinned app tiles use the same palette as the desktop and PC emulator.
+  const uint16_t dockColors[] = {0x8410, 0x1A9F, 0x0340, 0x2D9F, 0x07F0, 0x03DF};
+  const int dockX[] = {105, 126, 147, 168, 189, 210};
+  for (int i = 0; i < 6; i++) {
+    tft.fillRoundRect(dockX[i], y + 3, 15, 15, 5, dockColors[i]);
+    tft.drawRoundRect(dockX[i], y + 3, 15, 15, 5, 0xCE7F);
+  }
+  tft.setTextColor(COL_WHITE, 0x2AFC);
+  drawText(232, y + 7, g_sdOk ? "SD" : "--");
   if (g_startOpen) {
     tft.fillRoundRect(66, 53, 188, 126, 9, 0x1827);
     tft.drawRoundRect(66, 53, 188, 126, 9, 0x7DDF);
@@ -170,9 +173,11 @@ static void drawTaskbar() {
 }
 
 static void drawStatus() {
-  tft.fillRect(0, 0, SCR_W, STATUS_H, COL_DGRAY);
-  tft.setTextColor(COL_WHITE, COL_DGRAY);
-  drawText(4, 3, "KolibriX  " + (sessionLoggedIn() ? sessionUser() : String("locked")));
+  // Shared macOS-inspired menu bar; device status stays on the right.
+  const uint16_t menuBg = 0x18A7;
+  tft.fillRect(0, 0, SCR_W, STATUS_H, menuBg);
+  tft.setTextColor(COL_WHITE, menuBg);
+  drawText(4, 3, "KX  File  Edit  View");
   String right = wifiUp() ? "WiFi  " : "----  ";
   int bat = batteryPct();
   if (bat >= 0) right += "BAT " + String(bat) + "%  ";
