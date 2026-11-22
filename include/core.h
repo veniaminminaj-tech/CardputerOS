@@ -198,3 +198,6 @@ String shellPrompt();                                                          /
 int shellExec(const String& line, Print& out);                                 // возвращает код выхода
 void shellComplete(const String& word, bool cmdPos, std::vector<String>& out); // для Tab
 bool httpFetchText(const String& url, String& body, int& code, String& err);   // browser.cpp, для curl
+
+// ---------- Media Player ----------
+void openMediaPlayer();
