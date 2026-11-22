@@ -1155,6 +1155,8 @@ int cmdBrowse(Args& a, const String*, Print&) {
   return 0;
 }
 
+int cmdMedia(Args&, const String*, Print&) { openMediaPlayer(); return 0; }
+
 int cmdFiles(Args& a, const String*, Print&) {
   Args ops = operands(a);
   openFiles(ops.empty() ? g_cwd : fsResolve(ops[0]));
@@ -1329,6 +1331,7 @@ const std::vector<Builtin>& builtins() {
     {"ip",       cmdIp,       "addr",                           "show network addresses"},
     {"curl",     cmdCurl,     "url",                            "fetch URL and print body"},
     {"browse",   cmdBrowse,   "[url]",                          "open browser window"},
+    {"media",    cmdMedia,    "",                               "open microSD MJPEG/WAV media player"},
     {"files",    cmdFiles,    "[dir]",                          "open file manager window"},
     {"run",      cmdRun,      "file.lua",                       "run script in a window"},
     {"sh",       cmdSh,       "script",                         "run commands from a file"},
