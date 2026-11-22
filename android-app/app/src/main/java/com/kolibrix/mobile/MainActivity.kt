@@ -4,9 +4,30 @@ import android.app.Activity
 import android.os.Bundle
 import android.graphics.*
 import android.view.*
+import android.content.Intent
+import android.net.Uri
 import kotlin.math.*
 
 class MainActivity : Activity() {
+    private val openFileRequest = 4201
+
+    private fun launchFilePicker() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("text/plain", "application/rtf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/pdf", "application/zip", "application/x-rar-compressed", "application/vnd.rar", "application/x-7z-compressed", "application/octet-stream"))
+        }
+        startActivityForResult(intent, openFileRequest)
+    }
+
+    @Deprecated("Deprecated in Android API, retained for broad device compatibility")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == openFileRequest && resultCode == RESULT_OK) {
+            data?.data?.let { uri -> FileSupport.open(this, uri) }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN
@@ -15,7 +36,7 @@ class MainActivity : Activity() {
                 or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                 or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION)
-        setContentView(KXView(this))
+        setContentView(KXView(this) { launchFilePicker() })
     }
 
     override fun onBackPressed() {
@@ -27,7 +48,7 @@ class MainActivity : Activity() {
 
 private data class AppInfo(val name: String, val icon: String, val color: Int, val detail: String)
 
-private class KXView : View {
+private class KXView(context: android.content.Context, private val openFilePicker: () -> Unit) : View(context) {
     private val p = Paint(Paint.ANTI_ALIAS_FLAG)
     private val apps = listOf(
         AppInfo("Settings", "⚙", Color.rgb(132,130,132), "Personalize your KolibriX mobile simulator."),
@@ -49,7 +70,7 @@ private class KXView : View {
     private val bgTop = Color.rgb(8, 35, 105)
     private val bgBottom = Color.rgb(31, 104, 219)
 
-    constructor(context: android.content.Context) : super(context) {
+    init {
         isFocusable = true
         isClickable = true
     }
@@ -185,8 +206,14 @@ private class KXView : View {
                     text(c, "›", 307f, 307f+i*55f, 18f, Color.WHITE, false, Paint.Align.CENTER)
                 }
             } else if (app.name == "Files") {
-                val rows = arrayOf("📁  Documents", "📁  Downloads", "📁  Pictures", "📁  KolibriX")
-                for (i in rows.indices) text(c, rows[i], 52f, 290f+i*44f, 14f, Color.WHITE)
+                text(c, "Відкривай файли з пам’яті пристрою", 42f, 226f, 12f, Color.rgb(210,225,255))
+                rounded(c, 34f, 250f, 292f, 54f, 13f, Color.rgb(35,105,220))
+                text(c, "▣  Відкрити файл", 180f, 283f, 15f, Color.WHITE, true, Paint.Align.CENTER)
+                rounded(c, 34f, 318f, 292f, 48f, 12f, Color.argb(105,120,150,205))
+                text(c, "TXT • DOCX • PDF", 180f, 348f, 13f, Color.WHITE, true, Paint.Align.CENTER)
+                rounded(c, 34f, 378f, 292f, 48f, 12f, Color.argb(105,120,150,205))
+                text(c, "ZIP • RAR • 7Z", 180f, 408f, 13f, Color.WHITE, true, Paint.Align.CENTER)
+                textBlock(c, "Файли відкриваються через системний вибір Android. Архіви розпаковуються у Documents/KolibriX/Extracted.", 42f, 460f, 11f, Color.LTGRAY, 18f)
             } else if (app.name == "Browser") {
                 rounded(c, 34f, 275f, 292f, 40f, 12f, Color.rgb(43,57,87))
                 text(c, "Search or enter address", 48f, 300f, 11f, Color.LTGRAY)
@@ -248,6 +275,8 @@ private class KXView : View {
         if (active != null) {
             if (x > 285f && y in 95f..155f || y > 560f && y < 610f) {
                 active = null
+            } else if (active!!.name == "Files" && y in 240f..310f) {
+                openFilePicker()
             } else if (active!!.name == "Shell" && y > 200f) {
                 toast("Shell demo: commands are shown in the window")
             }
