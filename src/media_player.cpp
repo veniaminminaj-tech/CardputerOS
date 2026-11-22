@@ -71,10 +71,15 @@ public:
     tft.setTextColor(COL_WHITE, COL_DGRAY);
 
     if (_video) {
-      drawText(b.x + 3, b.y, _paused ? "MJPEG  PAUSED [Enter]" : "MJPEG  PLAYING [Enter]");
-      tft.setTextColor(COL_GRAY, COL_BLACK);
-      drawText(b.x + 3, b.y + rowH, "P pause  S stop  Del back");
-      drawText(b.x + 3, b.y + rowH * 2, fitText(_current, b.w - 6));
+      if (_jpgData && _jpgLen) {
+        tft.drawJpg(_jpgData, _jpgLen, b.x, b.y + rowH, b.w, b.h - rowH);
+      } else {
+        tft.setTextColor(COL_GRAY, COL_BLACK);
+        drawText(b.x + 3, b.y + rowH * 2, "Waiting for first frame...");
+      }
+      tft.fillRect(b.x, b.y, b.w, rowH, COL_DGRAY);
+      tft.setTextColor(COL_WHITE, COL_DGRAY);
+      drawText(b.x + 3, b.y, _paused ? "MJPEG PAUSED [Enter]" : "MJPEG PLAYING [Enter]");
       return;
     }
     if (_audio) {
@@ -167,13 +172,15 @@ private:
       if (n >= 2 && jpg[n - 2] == 0xFF && jpg[n - 1] == 0xD9) { ended = true; break; }
     }
     if (!ended || n < 4) { free(jpg); return false; }
-    tft.fillRect(0, STATUS_H + 16, SCR_W, SCR_H - STATUS_H - 16, COL_BLACK);
-    tft.drawJpg(jpg, n, 0, STATUS_H + 16, SCR_W, SCR_H - STATUS_H - 16);
-    free(jpg);
+    if (_jpgData) free(_jpgData);
+    _jpgData = jpg;
+    _jpgLen = n;
     return true;
   }
   void stopVideo() {
     if (_file) _file.close();
+    if (_jpgData) free(_jpgData);
+    _jpgData = nullptr; _jpgLen = 0;
     _video = false; _paused = false;
   }
   void startAudio(const String& path) {
@@ -209,6 +216,8 @@ private:
   bool _video = false, _paused = false, _audio = false;
   uint32_t _lastFrame = 0;
   File _file;
+  uint8_t* _jpgData = nullptr;
+  size_t _jpgLen = 0;
   uint8_t* _wavData = nullptr;
   size_t _wavLen = 0;
 };
