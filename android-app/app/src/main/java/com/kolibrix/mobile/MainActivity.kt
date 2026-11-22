@@ -269,7 +269,7 @@ private class KXView : View {
             if (x < 100f) { startOpen = !startOpen }
             else {
                 val i = ((x - 100f) / 47f).toInt().coerceIn(0,3)
-                active = apps[listOf(0,1,2,5][i]]
+                active = apps[listOf(0,1,2,5)[i]]
             }
             invalidate(); return true
         }
