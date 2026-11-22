@@ -134,7 +134,7 @@ object FileSupport {
             .replace(Regex("\\\\'[0-9a-f]{2}"), " ")
             .replace(Regex("\\\\[a-z]+-?\\d* ?"), "")
             .replace(Regex("[{}]"), "")
-            .replace("\u", "")
+            .replace(Regex("\\\\u-?\\d+\\??"), "")
     }
 
     private fun showText(activity: Activity, title: String, content: String) {
