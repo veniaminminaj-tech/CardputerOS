@@ -15,11 +15,12 @@ class MainActivity : Activity() {
                 or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                 or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION)
-        setContentView(KXView())
+        setContentView(KXView(this))
     }
 
     override fun onBackPressed() {
-        val v = window.decorView.findViewById<KXView>(android.R.id.content)?.getChildAt(0) as? KXView
+        val root = findViewById<ViewGroup>(android.R.id.content)
+        val v = root.getChildAt(0) as? KXView
         if (v?.closeTopLayer() != true) super.onBackPressed()
     }
 }
