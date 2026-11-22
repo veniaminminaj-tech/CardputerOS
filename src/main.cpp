@@ -53,6 +53,7 @@ static void scanApps() {
   g_apps.clear();
   g_apps.push_back({"Settings", "", 5, 0x8410});
   g_apps.push_back({"Browser", "", 2, 0x1A9F});
+  g_apps.push_back({"Media", "", 7, 0xD69F});
   g_apps.push_back({"Shell", "", 0, 0x0340});
   g_apps.push_back({"Telegram", "", 4, 0x2D9F});
   g_apps.push_back({"Device", "", 6, 0x07F0});
@@ -82,6 +83,7 @@ static void launch(int i) {
     case 4: openTelegram(); break;
     case 5: openSettings(); break;
     case 6: openDevice(); break;
+    case 7: openMediaPlayer(); break;
     case 3: openScript(g_apps[i].path); break;
     default: break;
   }
