@@ -15,7 +15,7 @@ bool endsWithIgnoreCase(const String& s, const char* ext) {
   String b = ext; b.toLowerCase();
   return a.endsWith(b);
 }
-bool isVideo(const String& n) { return endsWithIgnoreCase(n, ".mjpg") || endsWithIgnoreCase(n, ".mjpeg"); }
+bool isVideo(const String& n) { return endsWithIgnoreCase(n, ".mjpg") || endsWithIgnoreCase(n, ".mjpeg") || endsWithIgnoreCase(n, ".avi"); }
 bool isAudio(const String& n) { return endsWithIgnoreCase(n, ".wav"); }
 
 class MediaPlayerApp : public AppBase {
@@ -97,7 +97,7 @@ public:
     if (rows < 1) rows = 1;
     if (_items.empty()) {
       tft.setTextColor(COL_GRAY, COL_BLACK);
-      drawText(b.x + 3, b.y + rowH * 2, "No .mjpg/.mjpeg/.wav files");
+      drawText(b.x + 3, b.y + rowH * 2, "No MJPEG/AVI-MJPEG/WAV files");
     } else {
       if (_sel < _top) _top = _sel;
       if (_sel >= _top + rows) _top = _sel - rows + 1;
@@ -152,7 +152,7 @@ private:
     _file = SD.open(path, FILE_READ);
     if (!_file) { _message = "Cannot open video"; return; }
     _video = true; _paused = false; _lastFrame = 0;
-    _message = "MJPEG: concatenated JPEG frames";
+    _message = endsWithIgnoreCase(path, ".avi") ? "AVI: MJPEG codec only" : "Raw MJPEG frames";
   }
   bool drawNextFrame() {
     if (!_file || !_file.available()) return false;
@@ -160,16 +160,24 @@ private:
     if (!jpg) { _message = "Not enough RAM for frame"; return false; }
     size_t n = 0;
     bool started = false, ended = false;
+    int previous = -1;
+    // AVI MJPEG frames are JPEG bitstreams stored in RIFF chunks. Scan for
+    // a real JPEG SOI marker; this naturally skips RIFF headers and other chunks.
     while (_file.available() && n < MAX_JPEG_BYTES) {
       int v = _file.read();
       if (v < 0) break;
       uint8_t c = (uint8_t)v;
       if (!started) {
-        if (c == 0xFF) { jpg[0] = c; n = 1; started = true; }
+        if (previous == 0xFF && c == 0xD8) {
+          jpg[0] = 0xFF; jpg[1] = 0xD8; n = 2; started = true;
+        }
+        previous = c;
         continue;
       }
       jpg[n++] = c;
-      if (n >= 2 && jpg[n - 2] == 0xFF && jpg[n - 1] == 0xD9) { ended = true; break; }
+      if (n >= 2 && jpg[n - 2] == 0xFF && jpg[n - 1] == 0xD9) {
+        ended = true; break;
+      }
     }
     if (!ended || n < 4) { free(jpg); return false; }
     if (_jpgData) free(_jpgData);
@@ -210,7 +218,7 @@ private:
 
   String _dir = "/";
   String _current;
-  String _message = "Supports MJPEG video and WAV audio";
+  String _message = "MJPEG + AVI(MJPEG) + WAV";
   std::vector<Entry> _items;
   int _sel = 0, _top = 0;
   bool _video = false, _paused = false, _audio = false;
