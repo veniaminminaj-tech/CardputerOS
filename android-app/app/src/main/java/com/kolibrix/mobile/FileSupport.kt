@@ -225,10 +225,13 @@ object FileSupport {
                 try {
                     for (header in archive.fileHeaders) {
                         count++; require(count <= MAX_FILES) { "В архіві забагато файлів (ліміт 1000)" }
-                        val out = outputFor(header.fileNameString)
-                        if (header.isDirectory) out.mkdirs() else FileOutputStream(out).use { archive.extractFile(header, it) }
-                        total += if (out.isFile) out.length() else 0
-                        require(total <= MAX_EXTRACTED_BYTES) { "Архів перевищує ліміт розпакування 256 МБ" }
+                        val out = outputFor(header.fileName)
+                        if (header.isDirectory) out.mkdirs() else {
+                            require(total + header.unpSize <= MAX_EXTRACTED_BYTES) { "Архів перевищує ліміт розпакування 256 МБ" }
+                            FileOutputStream(out).use { archive.extractFile(header, it) }
+                            total += out.length()
+                            require(total <= MAX_EXTRACTED_BYTES) { "Архів перевищує ліміт розпакування 256 МБ" }
+                        }
                     }
                 } finally { archive.close() }
             }
