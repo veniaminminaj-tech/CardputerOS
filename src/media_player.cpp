@@ -15,7 +15,7 @@ bool endsWithIgnoreCase(const String& s, const char* ext) {
   String b = ext; b.toLowerCase();
   return a.endsWith(b);
 }
-bool isVideo(const String& n) { return endsWithIgnoreCase(n, ".mjpg") || endsWithIgnoreCase(n, ".mjpeg") || endsWithIgnoreCase(n, ".avi"); }
+bool isVideo(const String& n) { return endsWithIgnoreCase(n, ".mjpg") || endsWithIgnoreCase(n, ".mjpeg") || endsWithIgnoreCase(n, ".avi") || endsWithIgnoreCase(n, ".mov"); }
 bool isAudio(const String& n) { return endsWithIgnoreCase(n, ".wav"); }
 
 class MediaPlayerApp : public AppBase {
@@ -97,7 +97,7 @@ public:
     if (rows < 1) rows = 1;
     if (_items.empty()) {
       tft.setTextColor(COL_GRAY, COL_BLACK);
-      drawText(b.x + 3, b.y + rowH * 2, "No MJPEG/AVI-MJPEG/WAV files");
+      drawText(b.x + 3, b.y + rowH * 2, "No MJPEG/AVI-MJPEG/MOV-MJPEG/WAV files");
     } else {
       if (_sel < _top) _top = _sel;
       if (_sel >= _top + rows) _top = _sel - rows + 1;
@@ -152,7 +152,7 @@ private:
     _file = SD.open(path, FILE_READ);
     if (!_file) { _message = "Cannot open video"; return; }
     _video = true; _paused = false; _lastFrame = 0;
-    _message = endsWithIgnoreCase(path, ".avi") ? "AVI: MJPEG codec only" : "Raw MJPEG frames";
+    _message = endsWithIgnoreCase(path, ".avi") ? "AVI/MOV: MJPEG codec only" : "Raw MJPEG frames";
   }
   bool drawNextFrame() {
     if (!_file || !_file.available()) return false;
@@ -218,7 +218,7 @@ private:
 
   String _dir = "/";
   String _current;
-  String _message = "MJPEG + AVI(MJPEG) + WAV";
+  String _message = "MJPEG + AVI/MOV(MJPEG) + WAV";
   std::vector<Entry> _items;
   int _sel = 0, _top = 0;
   bool _video = false, _paused = false, _audio = false;
