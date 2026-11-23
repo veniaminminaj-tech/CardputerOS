@@ -377,7 +377,8 @@ private:
 
     fillMp3Input();
     if (_mp3InputLen < 4) {
-      if (_mp3Eof) {
+      // Let the final decoded PCM buffer finish before stopping the speaker.
+      if (_mp3Eof && M5Cardputer.Speaker.isPlaying(0) == 0) {
         stopAudio();
         _message = "MP3 finished";
       }
@@ -402,7 +403,7 @@ private:
       consumeMp3Input(consumed > 0 ? consumed : 1);
     } else if (_mp3InputLen > 3) {
       consumeMp3Input(1); // resynchronise on the next possible MPEG audio frame
-    } else if (_mp3Eof) {
+    } else if (_mp3Eof && M5Cardputer.Speaker.isPlaying(0) == 0) {
       stopAudio();
       _message = "MP3 ended (no more frames)";
     }
