@@ -138,8 +138,13 @@ public:
   }
 
   void draw(const Box& b, bool focused) override {
-    tft.fillRect(b.x, b.y, b.w, b.h, COL_BLACK);
     int rowH = g_lineH;
+    // GIF frames may update only changed scanlines. Keep the previous canvas
+    // between WM redraws; clear it once when a new GIF is opened.
+    if (!_gifMode || _gifFirstDraw) {
+      tft.fillRect(b.x, b.y, b.w, b.h, COL_BLACK);
+      _gifFirstDraw = false;
+    }
     tft.fillRect(b.x, b.y, b.w, rowH, COL_DGRAY);
     tft.setTextColor(COL_WHITE, COL_DGRAY);
 
@@ -233,11 +238,13 @@ private:
     stopVideo();
     gifDecoder.begin(GIF_PALETTE_RGB565_LE);
     if (!gifDecoder.open(path.c_str(), gifOpenFile, gifCloseFile, gifReadFile, gifSeekFile, gifDrawLine)) {
+      if (gifFile) gifFile.close();
       _message = "Cannot decode GIF";
       return;
     }
     _video = true;
     _gifMode = true;
+    _gifFirstDraw = true;
     _paused = false;
     _gifNextFrame = 0;
     _message = "Animated GIF";
@@ -283,6 +290,7 @@ private:
   void stopVideo() {
     if (_gifMode) gifDecoder.close();
     _gifMode = false;
+    _gifFirstDraw = false;
     if (_file) _file.close();
     if (_jpgData) free(_jpgData);
     _jpgData = nullptr; _jpgLen = 0;
@@ -318,7 +326,7 @@ private:
   String _message = "MJPEG + AVI/MOV(MJPEG) + WAV";
   std::vector<Entry> _items;
   int _sel = 0, _top = 0;
-  bool _video = false, _paused = false, _audio = false, _gifMode = false;\n  uint32_t _lastFrame = 0, _gifNextFrame = 0;
+  bool _video = false, _paused = false, _audio = false, _gifMode = false, _gifFirstDraw = false;\n  uint32_t _lastFrame = 0, _gifNextFrame = 0;
   File _file;
   uint8_t* _jpgData = nullptr;
   size_t _jpgLen = 0;
