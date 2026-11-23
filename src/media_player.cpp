@@ -1,6 +1,7 @@
 // Media Player: MJPEG video frames and WAV audio from microSD.
 #include <Arduino.h>
 #include <M5Cardputer.h>
+#include <AnimatedGIF.h>
 #include <SD.h>
 #include <stdlib.h>
 #include "core.h"
@@ -15,8 +16,64 @@ bool endsWithIgnoreCase(const String& s, const char* ext) {
   String b = ext; b.toLowerCase();
   return a.endsWith(b);
 }
-bool isVideo(const String& n) { return endsWithIgnoreCase(n, ".mjpg") || endsWithIgnoreCase(n, ".mjpeg") || endsWithIgnoreCase(n, ".avi") || endsWithIgnoreCase(n, ".mov"); }
+bool isVideo(const String& n) { return endsWithIgnoreCase(n, ".mjpg") || endsWithIgnoreCase(n, ".mjpeg") || endsWithIgnoreCase(n, ".avi") || endsWithIgnoreCase(n, ".mov") || endsWithIgnoreCase(n, ".gif"); }
 bool isAudio(const String& n) { return endsWithIgnoreCase(n, ".wav"); }
+
+// AnimatedGIF uses callbacks so the file is streamed from SD instead of loaded
+// completely into RAM. The draw callback writes one RGB565 scanline at a time.
+AnimatedGIF gifDecoder;
+File gifFile;
+int gifClipX = 0, gifClipY = 0, gifClipW = 320, gifClipH = 220;
+
+void* gifOpenFile(const char* name, int32_t* size) {
+  gifFile = SD.open(name, FILE_READ);
+  if (!gifFile) return nullptr;
+  *size = (int32_t)gifFile.size();
+  return &gifFile;
+}
+void gifCloseFile(void* handle) {
+  File* f = static_cast<File*>(handle);
+  if (f) f->close();
+}
+int32_t gifReadFile(GIFFILE* file, uint8_t* buffer, int32_t length) {
+  if (!file || !file->fHandle || length <= 0) return 0;
+  File* f = static_cast<File*>(file->fHandle);
+  int32_t got = (int32_t)f->read(buffer, (size_t)length);
+  file->iPos = (int32_t)f->position();
+  return got;
+}
+int32_t gifSeekFile(GIFFILE* file, int32_t position) {
+  if (!file || !file->fHandle || position < 0 || position > file->iSize) return 0;
+  File* f = static_cast<File*>(file->fHandle);
+  if (!f->seek((uint32_t)position)) return 0;
+  file->iPos = position;
+  return position;
+}
+void gifDrawLine(GIFDRAW* draw) {
+  if (!draw || !draw->pPixels || !draw->pPalette) return;
+  const int y = gifClipY + draw->iY + draw->y;
+  if (y < gifClipY || y >= gifClipY + gifClipH) return;
+  static uint16_t line[320];
+  const int x0 = gifClipX + draw->iX;
+  int runStart = -1, runLen = 0;
+  for (int i = 0; i < draw->iWidth; ++i) {
+    const int x = x0 + i;
+    const uint8_t index = draw->pPixels[i];
+    const bool transparent = draw->ucHasTransparency && index == draw->ucTransparent;
+    if (!transparent && x >= gifClipX && x < gifClipX + gifClipW && x >= 0 && x < 320) {
+      line[runLen++] = draw->pPalette[index];
+      if (runStart < 0) runStart = x;
+    } else if (runLen) {
+      tft.pushImage(runStart, y, runLen, 1, line);
+      runStart = -1; runLen = 0;
+    }
+    if (runLen == 320) {
+      tft.pushImage(runStart, y, runLen, 1, line);
+      runStart = -1; runLen = 0;
+    }
+  }
+  if (runLen) tft.pushImage(runStart, y, runLen, 1, line);
+}
 
 class MediaPlayerApp : public AppBase {
 public:
@@ -53,9 +110,25 @@ public:
   }
 
   void tick() override {
-    if (!_video || _paused || !_file) return;
+    if (!_video || _paused) return;
     uint32_t now = millis();
-    if (now - _lastFrame < FRAME_INTERVAL_MS) return;
+    if (_gifMode) {
+      if ((int32_t)(now - _gifNextFrame) < 0) return;
+      int delayMs = 100;
+      int rc = gifDecoder.playFrame(false, &delayMs);
+      if (rc < 0) {
+        stopVideo();
+        _message = "GIF decode error";
+      } else {
+        if (rc == 0) gifDecoder.reset(); // loop animated GIFs
+        if (delayMs < 20) delayMs = 20;
+        if (delayMs > 1000) delayMs = 1000;
+        _gifNextFrame = now + (uint32_t)delayMs;
+      }
+      wmRedraw();
+      return;
+    }
+    if (!_file || now - _lastFrame < FRAME_INTERVAL_MS) return;
     _lastFrame = now;
     if (!drawNextFrame()) {
       stopVideo();
@@ -71,6 +144,15 @@ public:
     tft.setTextColor(COL_WHITE, COL_DGRAY);
 
     if (_video) {
+      if (_gifMode) {
+        gifClipX = b.x;
+        gifClipY = b.y + rowH;
+        gifClipW = b.w;
+        gifClipH = b.h - rowH;
+        tft.setTextColor(COL_WHITE, COL_DGRAY);
+        drawText(b.x + 3, b.y, _paused ? "GIF PAUSED [Enter]" : "GIF PLAYING [Enter]");
+        return;
+      }
       if (_jpgData && _jpgLen) {
         tft.drawJpg(_jpgData, _jpgLen, b.x, b.y + rowH, b.w, b.h - rowH);
       } else {
@@ -97,7 +179,7 @@ public:
     if (rows < 1) rows = 1;
     if (_items.empty()) {
       tft.setTextColor(COL_GRAY, COL_BLACK);
-      drawText(b.x + 3, b.y + rowH * 2, "No MJPEG/AVI-MJPEG/MOV-MJPEG/WAV files");
+      drawText(b.x + 3, b.y + rowH * 2, "No MJPEG/AVI-MJPEG/MOV-MJPEG/GIF/WAV files");
     } else {
       if (_sel < _top) _top = _sel;
       if (_sel >= _top + rows) _top = _sel - rows + 1;
@@ -144,8 +226,21 @@ private:
     if (e.dir) { _dir = path; reload(); return; }
     if (!canRead(path)) { _message = "Permission denied"; return; }
     _current = e.name;
-    if (isVideo(e.name)) startVideo(path);
+    if (endsWithIgnoreCase(e.name, ".gif")) startGif(path);\n    else if (isVideo(e.name)) startVideo(path);
     else if (isAudio(e.name)) startAudio(path);
+  }
+  void startGif(const String& path) {
+    stopVideo();
+    gifDecoder.begin(GIF_PALETTE_RGB565_LE);
+    if (!gifDecoder.open(path.c_str(), gifOpenFile, gifCloseFile, gifReadFile, gifSeekFile, gifDrawLine)) {
+      _message = "Cannot decode GIF";
+      return;
+    }
+    _video = true;
+    _gifMode = true;
+    _paused = false;
+    _gifNextFrame = 0;
+    _message = "Animated GIF";
   }
   void startVideo(const String& path) {
     stopVideo();
@@ -186,6 +281,8 @@ private:
     return true;
   }
   void stopVideo() {
+    if (_gifMode) gifDecoder.close();
+    _gifMode = false;
     if (_file) _file.close();
     if (_jpgData) free(_jpgData);
     _jpgData = nullptr; _jpgLen = 0;
@@ -221,8 +318,7 @@ private:
   String _message = "MJPEG + AVI/MOV(MJPEG) + WAV";
   std::vector<Entry> _items;
   int _sel = 0, _top = 0;
-  bool _video = false, _paused = false, _audio = false;
-  uint32_t _lastFrame = 0;
+  bool _video = false, _paused = false, _audio = false, _gifMode = false;\n  uint32_t _lastFrame = 0, _gifNextFrame = 0;
   File _file;
   uint8_t* _jpgData = nullptr;
   size_t _jpgLen = 0;
