@@ -2,6 +2,8 @@
 #include <Arduino.h>
 #include <M5Cardputer.h>
 #include <AnimatedGIF.h>
+#define MINIMP3_IMPLEMENTATION
+#include <minimp3.h>
 #include <SD.h>
 #include <stdlib.h>
 #include "core.h"
@@ -17,7 +19,7 @@ bool endsWithIgnoreCase(const String& s, const char* ext) {
   return a.endsWith(b);
 }
 bool isVideo(const String& n) { return endsWithIgnoreCase(n, ".mjpg") || endsWithIgnoreCase(n, ".mjpeg") || endsWithIgnoreCase(n, ".avi") || endsWithIgnoreCase(n, ".mov") || endsWithIgnoreCase(n, ".gif"); }
-bool isAudio(const String& n) { return endsWithIgnoreCase(n, ".wav"); }
+bool isAudio(const String& n) { return endsWithIgnoreCase(n, ".wav") || endsWithIgnoreCase(n, ".mp3"); }
 
 // AnimatedGIF uses callbacks so the file is streamed from SD instead of loaded
 // completely into RAM. The draw callback writes one RGB565 scanline at a time.
@@ -98,7 +100,10 @@ public:
     }
     if (_audio) {
       if (k.enter || lowerc(k.ch) == 'p') {
-        if (M5Cardputer.Speaker.isPlaying()) M5Cardputer.Speaker.stop();
+        if (_mp3Mode) {
+          _audioPaused = !_audioPaused;
+          if (_audioPaused) M5Cardputer.Speaker.stop();
+        } else if (M5Cardputer.Speaker.isPlaying()) M5Cardputer.Speaker.stop();
         else if (_wavData && _wavLen) M5Cardputer.Speaker.playWav(_wavData, _wavLen, 1, 0, true);
       }
       if (lowerc(k.ch) == 's') stopAudio();
@@ -110,6 +115,7 @@ public:
   }
 
   void tick() override {
+    if (_audio && _mp3Mode && !_audioPaused) { tickMp3(); return; }
     if (!_video || _paused) return;
     uint32_t now = millis();
     if (_gifMode) {
@@ -170,7 +176,7 @@ public:
       return;
     }
     if (_audio) {
-      drawText(b.x + 3, b.y, "WAV AUDIO [Enter] pause/resume");
+      drawText(b.x + 3, b.y, _mp3Mode ? (_audioPaused ? "MP3 PAUSED [Enter]" : "MP3 PLAYING [Enter]") : "WAV AUDIO [Enter] pause/resume");
       tft.setTextColor(COL_WHITE, COL_BLACK);
       drawText(b.x + 3, b.y + rowH * 2, fitText(_current, b.w - 6));
       tft.setTextColor(COL_GRAY, COL_BLACK);
@@ -231,7 +237,8 @@ private:
     if (e.dir) { _dir = path; reload(); return; }
     if (!canRead(path)) { _message = "Permission denied"; return; }
     _current = e.name;
-    if (endsWithIgnoreCase(e.name, ".gif")) startGif(path);\n    else if (isVideo(e.name)) startVideo(path);
+    if (endsWithIgnoreCase(e.name, ".gif")) startGif(path);
+    else if (isVideo(e.name)) startVideo(path);
     else if (isAudio(e.name)) startAudio(path);
   }
   void startGif(const String& path) {
@@ -296,6 +303,110 @@ private:
     _jpgData = nullptr; _jpgLen = 0;
     _video = false; _paused = false;
   }
+  void startMp3(const String& path) {
+    stopAudio();
+    _mp3File = SD.open(path, FILE_READ);
+    if (!_mp3File || _mp3File.isDirectory()) {
+      _mp3File.close();
+      _message = "Cannot open MP3";
+      return;
+    }
+
+    // Skip an optional ID3v2 tag; MP3 frames remain streamed from SD.
+    uint8_t id3[10];
+    size_t got = _mp3File.read(id3, sizeof(id3));
+    if (got == sizeof(id3) && id3[0] == 'I' && id3[1] == 'D' && id3[2] == '3') {
+      uint32_t tagSize = ((uint32_t)(id3[6] & 0x7F) << 21) |
+                         ((uint32_t)(id3[7] & 0x7F) << 14) |
+                         ((uint32_t)(id3[8] & 0x7F) << 7) |
+                         (uint32_t)(id3[9] & 0x7F);
+      uint32_t tagEnd = 10 + tagSize + ((id3[5] & 0x10) ? 10 : 0);
+      if (tagEnd > _mp3File.size() || !_mp3File.seek(tagEnd)) _mp3File.seek(0);
+    } else {
+      _mp3File.seek(0);
+    }
+
+    mp3dec_init(&_mp3Decoder);
+    _mp3InputLen = 0;
+    _mp3Eof = false;
+    _mp3Pending = false;
+    _mp3BufferIndex = 0;
+    _mp3Rate = 0;
+    _audioPaused = false;
+    _mp3Mode = true;
+    _audio = true;
+    _message = "MP3 decoder: streaming from SD";
+  }
+
+  void fillMp3Input() {
+    while (_mp3InputLen < (int)sizeof(_mp3Input) && _mp3File.available()) {
+      int n = _mp3File.read(_mp3Input + _mp3InputLen,
+                            sizeof(_mp3Input) - (size_t)_mp3InputLen);
+      if (n <= 0) break;
+      _mp3InputLen += n;
+    }
+    if (!_mp3File.available()) _mp3Eof = true;
+  }
+
+  void consumeMp3Input(int count) {
+    if (count <= 0) return;
+    if (count >= _mp3InputLen) {
+      _mp3InputLen = 0;
+      return;
+    }
+    memmove(_mp3Input, _mp3Input + count, (size_t)(_mp3InputLen - count));
+    _mp3InputLen -= count;
+  }
+
+  void tickMp3() {
+    // Do not overwrite PCM buffers while I2S still reads queued samples.
+    if (M5Cardputer.Speaker.isPlaying(0) >= 2) return;
+    if (_mp3Pending) {
+      int16_t* pcm = _mp3Pcm[_mp3BufferIndex];
+      if (!M5Cardputer.Speaker.playRaw(pcm, _mp3Samples * _mp3Channels,
+                                      _mp3Rate, _mp3Channels == 2, 1, 0, false)) {
+        _message = "MP3 audio output unavailable";
+        stopAudio();
+        return;
+      }
+      _mp3Pending = false;
+      _mp3BufferIndex ^= 1;
+      return;
+    }
+
+    fillMp3Input();
+    if (_mp3InputLen < 4) {
+      if (_mp3Eof) {
+        stopAudio();
+        _message = "MP3 finished";
+      }
+      return;
+    }
+
+    mp3dec_frame_info_t info = {};
+    int samples = mp3dec_decode_frame(&_mp3Decoder, _mp3Input, _mp3InputLen,
+                                      _mp3Pcm[_mp3BufferIndex], &info);
+    if (samples > 0 && info.frame_bytes > 0 && info.channels > 0 && info.hz > 0) {
+      int consumed = info.frame_offset + info.frame_bytes;
+      if (consumed > 0 && consumed <= _mp3InputLen) consumeMp3Input(consumed);
+      _mp3Samples = samples;
+      _mp3Channels = info.channels;
+      _mp3Rate = (uint32_t)info.hz;
+      _mp3Pending = true;
+      return;
+    }
+
+    if (info.frame_bytes > 0) {
+      int consumed = info.frame_offset + info.frame_bytes;
+      consumeMp3Input(consumed > 0 ? consumed : 1);
+    } else if (_mp3InputLen > 3) {
+      consumeMp3Input(1); // resynchronise on the next possible MPEG audio frame
+    } else if (_mp3Eof) {
+      stopAudio();
+      _message = "MP3 ended (no more frames)";
+    }
+  }
+
   void startAudio(const String& path) {
     stopAudio();
     File f = SD.open(path, FILE_READ);
@@ -317,6 +428,11 @@ private:
   }
   void stopAudio() {
     M5Cardputer.Speaker.stop();
+    if (_mp3File) _mp3File.close();
+    _mp3Mode = false;
+    _audioPaused = false;
+    _mp3Pending = false;
+    _mp3InputLen = 0;
     if (_wavData) free(_wavData);
     _wavData = nullptr; _wavLen = 0; _audio = false;
   }
@@ -326,7 +442,14 @@ private:
   String _message = "MJPEG + AVI/MOV(MJPEG) + WAV";
   std::vector<Entry> _items;
   int _sel = 0, _top = 0;
-  bool _video = false, _paused = false, _audio = false, _gifMode = false, _gifFirstDraw = false;\n  uint32_t _lastFrame = 0, _gifNextFrame = 0;
+  bool _video = false, _paused = false, _audio = false, _gifMode = false, _gifFirstDraw = false;
+  bool _mp3Mode = false, _audioPaused = false, _mp3Eof = false, _mp3Pending = false;
+  uint32_t _lastFrame = 0, _gifNextFrame = 0, _mp3Rate = 0;
+  mp3dec_t _mp3Decoder;
+  File _mp3File;
+  uint8_t _mp3Input[4096];
+  int _mp3InputLen = 0, _mp3Samples = 0, _mp3Channels = 0, _mp3BufferIndex = 0;
+  int16_t _mp3Pcm[2][MINIMP3_MAX_SAMPLES_PER_FRAME];
   File _file;
   uint8_t* _jpgData = nullptr;
   size_t _jpgLen = 0;
