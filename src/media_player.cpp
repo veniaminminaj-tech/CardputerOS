@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <M5Cardputer.h>
 #include <AnimatedGIF.h>
+#define MINIMP3_ONLY_MP3
 #define MINIMP3_IMPLEMENTATION
 #include <minimp3.h>
 #include <SD.h>
@@ -190,7 +191,7 @@ public:
     if (rows < 1) rows = 1;
     if (_items.empty()) {
       tft.setTextColor(COL_GRAY, COL_BLACK);
-      drawText(b.x + 3, b.y + rowH * 2, "No MJPEG/AVI-MJPEG/MOV-MJPEG/GIF/WAV files");
+      drawText(b.x + 3, b.y + rowH * 2, "No GIF/MJPEG/AVI-MJPEG/MP3/WAV files");
     } else {
       if (_sel < _top) _top = _sel;
       if (_sel >= _top + rows) _top = _sel - rows + 1;
@@ -387,7 +388,7 @@ private:
     int samples = mp3dec_decode_frame(&_mp3Decoder, _mp3Input, _mp3InputLen,
                                       _mp3Pcm[_mp3BufferIndex], &info);
     if (samples > 0 && info.frame_bytes > 0 && info.channels > 0 && info.hz > 0) {
-      int consumed = info.frame_offset + info.frame_bytes;
+      int consumed = info.frame_bytes;
       if (consumed > 0 && consumed <= _mp3InputLen) consumeMp3Input(consumed);
       _mp3Samples = samples;
       _mp3Channels = info.channels;
@@ -397,7 +398,7 @@ private:
     }
 
     if (info.frame_bytes > 0) {
-      int consumed = info.frame_offset + info.frame_bytes;
+      int consumed = info.frame_bytes;
       consumeMp3Input(consumed > 0 ? consumed : 1);
     } else if (_mp3InputLen > 3) {
       consumeMp3Input(1); // resynchronise on the next possible MPEG audio frame
@@ -439,7 +440,7 @@ private:
 
   String _dir = "/";
   String _current;
-  String _message = "MJPEG + AVI/MOV(MJPEG) + WAV";
+  String _message = "GIF/MJPEG video + MP3/WAV audio";
   std::vector<Entry> _items;
   int _sel = 0, _top = 0;
   bool _video = false, _paused = false, _audio = false, _gifMode = false, _gifFirstDraw = false;
